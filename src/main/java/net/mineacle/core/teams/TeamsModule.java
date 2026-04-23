@@ -2,6 +2,7 @@ package net.mineacle.core.teams;
 
 import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
+import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.command.TeamCommand;
 import net.mineacle.core.teams.listener.TeamChatListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
@@ -22,6 +23,7 @@ public final class TeamsModule extends Module {
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
     private TeamChatService teamChatService;
+    private TeleportService teleportService;
 
     @Override
     public String name() {
@@ -36,13 +38,23 @@ public final class TeamsModule extends Module {
         this.inviteService = new TeamInviteService(core, teamService, banService);
         this.teamHomeService = new TeamHomeService(core, teamService);
         this.teamChatService = new TeamChatService(core, teamService);
+        this.teleportService = new TeleportService(core);
 
-        TeamCommand teamCommand = new TeamCommand(core, teamService, banService, inviteService, teamHomeService, teamChatService);
+        TeamCommand teamCommand = new TeamCommand(
+                core,
+                teamService,
+                banService,
+                inviteService,
+                teamHomeService,
+                teamChatService,
+                teleportService
+        );
+
         registerCommand("team", teamCommand, teamCommand);
         registerCommand("teamchat", teamCommand, teamCommand);
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService),
+                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService),
                 core
         );
 

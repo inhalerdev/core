@@ -2,6 +2,7 @@ package net.mineacle.core.teams.listener;
 
 import net.kyori.adventure.text.Component;
 import net.mineacle.core.Core;
+import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
@@ -41,13 +42,22 @@ public final class TeamsGuiListener implements Listener {
     private final TeamBanService banService;
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
+    private final TeleportService teleportService;
 
-    public TeamsGuiListener(Core core, TeamService teamService, TeamBanService banService, TeamInviteService inviteService, TeamHomeService teamHomeService) {
+    public TeamsGuiListener(
+            Core core,
+            TeamService teamService,
+            TeamBanService banService,
+            TeamInviteService inviteService,
+            TeamHomeService teamHomeService,
+            TeleportService teleportService
+    ) {
         this.core = core;
         this.teamService = teamService;
         this.banService = banService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
+        this.teleportService = teleportService;
     }
 
     @EventHandler
@@ -214,8 +224,10 @@ public final class TeamsGuiListener implements Listener {
                 }
 
                 player.closeInventory();
-                player.teleport(home);
-                player.sendMessage(core.getMessage("teams.home.teleported"));
+                teleportService.begin(player, "Team Home", () -> {
+                    player.teleport(home);
+                    player.sendMessage(core.getMessage("teams.home.teleported"));
+                });
             }
             case 53 -> {
                 if (teamService.isFounder(player.getUniqueId())) {

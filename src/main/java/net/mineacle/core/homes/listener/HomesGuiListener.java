@@ -215,8 +215,10 @@ public final class HomesGuiListener implements Listener {
             }
 
             player.closeInventory();
-            player.teleport(home);
-            player.sendMessage("§7Teleported to §dTeam Home");
+            teleportService.begin(player, "Team Home", () -> {
+                player.teleport(home);
+                player.sendMessage("§7Teleported to §dTeam Home");
+            });
             return;
         }
 
@@ -368,6 +370,7 @@ public final class HomesGuiListener implements Listener {
     }
 
     private void sendUpgradeMessage(Player player) {
+        player.closeInventory();
         player.sendMessage(" ");
         player.sendMessage(core.getMessage("homes.upgrade-line-1"));
         player.sendMessage(" ");

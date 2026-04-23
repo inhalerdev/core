@@ -3,6 +3,7 @@ package net.mineacle.core.teams.command;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
+import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
@@ -25,6 +26,7 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class TeamCommand implements CommandExecutor, TabCompleter {
 
@@ -34,14 +36,24 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
     private final TeamChatService teamChatService;
+    private final TeleportService teleportService;
 
-    public TeamCommand(Core core, TeamService teamService, TeamBanService banService, TeamInviteService inviteService, TeamHomeService teamHomeService, TeamChatService teamChatService) {
+    public TeamCommand(
+            Core core,
+            TeamService teamService,
+            TeamBanService banService,
+            TeamInviteService inviteService,
+            TeamHomeService teamHomeService,
+            TeamChatService teamChatService,
+            TeleportService teleportService
+    ) {
         this.core = core;
         this.teamService = teamService;
         this.banService = banService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
         this.teamChatService = teamChatService;
+        this.teleportService = teleportService;
     }
 
     @Override
@@ -170,7 +182,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        for (java.util.UUID memberId : teamService.getTeamMembers(team.teamId())) {
+        for (UUID memberId : teamService.getTeamMembers(team.teamId())) {
             teamChatService.clear(memberId);
             TeamGuiSession.clear(memberId);
         }
@@ -286,8 +298,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.teleport(home);
-        player.sendMessage(core.getMessage("teams.home.teleported"));
+        teleportService.begin(player, "Team Home", () -> {
+            player.teleport(home);
+            player.sendMessage(core.getMessage("teams.home.teleported"));
+        });
         return true;
     }
 
