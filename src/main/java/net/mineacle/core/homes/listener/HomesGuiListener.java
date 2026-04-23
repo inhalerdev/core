@@ -181,6 +181,7 @@ public final class HomesGuiListener implements Listener {
         if (team == null) {
             player.closeInventory();
             player.sendMessage("§cYou are not in a team.");
+            player.sendMessage("§7Type §d/team create <name> §7to create a team.");
             return;
         }
 
