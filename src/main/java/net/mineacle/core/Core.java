@@ -2,6 +2,7 @@ package net.mineacle.core;
 
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.HomesModule;
+import net.mineacle.core.teams.TeamsModule;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
@@ -43,6 +44,7 @@ public final class Core extends JavaPlugin {
 
         try {
             registerModule(new HomesModule());
+            registerModule(new TeamsModule());
             getLogger().info("MineacleCore enabled successfully.");
         } catch (Exception exception) {
             getLogger().severe("Failed to enable MineacleCore: " + exception.getMessage());

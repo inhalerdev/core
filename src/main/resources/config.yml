@@ -2,7 +2,7 @@ homes:
   max-homes:
     default: 2
     plus: 5
-  plus-permission: mineaclehomes.plus
+  plus-permission: mineacle.plus
 
   blocked-set-worlds: []
 
@@ -21,7 +21,7 @@ homes:
     delete-confirm-timeout-seconds: 5
 
 teams:
-  enabled: false
+  enabled: true
   max-members: 25
   default-role: member
   team-home-enabled: true

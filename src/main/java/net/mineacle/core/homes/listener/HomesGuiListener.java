@@ -7,6 +7,10 @@ import net.mineacle.core.homes.gui.HomesMainGui;
 import net.mineacle.core.homes.service.HomeService;
 import net.mineacle.core.homes.service.HomeWorldRules;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.teams.gui.TeamConfirmGui;
+import net.mineacle.core.teams.model.TeamRecord;
+import net.mineacle.core.teams.service.TeamHomeService;
+import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Location;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -21,6 +25,9 @@ public final class HomesGuiListener implements Listener {
 
     private static final String META_HOME_PENDING = "mh_pendingDelete";
     private static final String META_HOME_CONFIRM = "mh_deleteConfirm";
+
+    private static final String META_TEAM_HOME_PENDING = "mh_teamHomePending";
+    private static final String META_TEAM_HOME_CONFIRM = "mh_teamHomeConfirm";
 
     private final Core core;
     private final HomeService homeService;
@@ -66,22 +73,23 @@ public final class HomesGuiListener implements Listener {
                 }
             }
 
-            handleTeamHomePlaceholderClick(player, slot);
+            handleTeamHomeClick(player, slot);
             return;
         }
 
         if (event.getView().getTitle().equals(deleteTitle)) {
             event.setCancelled(true);
             handlePlayerDeleteConfirm(player, slot);
+            return;
+        }
+
+        if (event.getView().getTitle().equals(TeamConfirmGui.DELETE_HOME_TITLE)) {
+            event.setCancelled(true);
+            handleTeamHomeDeleteConfirm(player, slot);
         }
     }
 
     private void handleHomeBedClick(Player player, int id) {
-        if (homeService.getMaxHomes(player) < id) {
-            sendUpgradeMessage(player);
-            return;
-        }
-
         UUID uuid = player.getUniqueId();
 
         if (homeService.exists(uuid, id)) {
@@ -104,6 +112,11 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
+        if (!homeService.hasFreeHomeCapacity(player)) {
+            sendUpgradeMessage(player);
+            return;
+        }
+
         if (worldRules.isBlockedWorld(player.getLocation())) {
             String message = core.getMessage("homes.blocked-world");
             player.sendActionBar(Component.text(message));
@@ -122,14 +135,14 @@ public final class HomesGuiListener implements Listener {
     }
 
     private void handleHomeDyeClick(Player player, int id) {
-        if (homeService.getMaxHomes(player) < id) {
-            sendUpgradeMessage(player);
-            return;
-        }
-
         UUID uuid = player.getUniqueId();
 
         if (!homeService.exists(uuid, id)) {
+            if (!homeService.hasFreeHomeCapacity(player)) {
+                sendUpgradeMessage(player);
+                return;
+            }
+
             if (worldRules.isBlockedWorld(player.getLocation())) {
                 String message = core.getMessage("homes.blocked-world");
                 player.sendActionBar(Component.text(message));
@@ -151,6 +164,127 @@ public final class HomesGuiListener implements Listener {
         player.setMetadata(META_HOME_PENDING, new FixedMetadataValue(core, id));
         player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, 0));
         ConfirmDeleteHomeGui.openPlayerDelete(core, player, id, homeService.getDisplayName(uuid, id));
+    }
+
+    private void handleTeamHomeClick(Player player, int slot) {
+        int bannerSlot = core.getConfig().getInt("homes.team-home.banner-slot", 10);
+        int dyeSlot = core.getConfig().getInt("homes.team-home.dye-slot", 19);
+
+        if (slot != bannerSlot && slot != dyeSlot) {
+            return;
+        }
+
+        TeamService teamService = new TeamService(core);
+        TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
+        if (team == null) {
+            player.closeInventory();
+            player.sendMessage("§cYou are not in a team.");
+            return;
+        }
+
+        boolean isAdmin = teamService.isAdmin(player.getUniqueId());
+        boolean isFounder = teamService.isFounder(player.getUniqueId());
+        boolean hasHome = teamHomeService.hasTeamHome(team.teamId());
+
+        if (!hasHome) {
+            if (!isAdmin) {
+                player.sendMessage("§7Ask your §dteam owner §7to set Team Home");
+                return;
+            }
+
+            if (worldRules.isBlockedWorld(player.getLocation())) {
+                String message = core.getMessage("homes.blocked-team-home-world");
+                player.sendActionBar(Component.text(message));
+                player.sendMessage(message);
+                return;
+            }
+
+            teamHomeService.setTeamHome(team.teamId(), player.getLocation());
+            player.sendMessage("§7Team Home set to your current location");
+            HomesMainGui.open(core, player, homeService);
+            return;
+        }
+
+        if (slot == bannerSlot) {
+            Location home = teamHomeService.getTeamHome(team.teamId());
+            if (home == null) {
+                player.sendMessage("§cYour team does not have a home set.");
+                return;
+            }
+
+            player.closeInventory();
+            player.teleport(home);
+            player.sendMessage("§7Teleported to §dTeam Home");
+            return;
+        }
+
+        if (slot == dyeSlot && isFounder) {
+            player.setMetadata(META_TEAM_HOME_PENDING, new FixedMetadataValue(core, team.teamId()));
+            player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, false));
+            TeamConfirmGui.openDeleteHome(player);
+        }
+    }
+
+    private void handleTeamHomeDeleteConfirm(Player player, int slot) {
+        if (!player.hasMetadata(META_TEAM_HOME_PENDING)) {
+            player.closeInventory();
+            return;
+        }
+
+        String teamId = player.getMetadata(META_TEAM_HOME_PENDING).get(0).asString();
+        boolean confirmed = player.hasMetadata(META_TEAM_HOME_CONFIRM)
+                && player.getMetadata(META_TEAM_HOME_CONFIRM).get(0).asBoolean();
+
+        if (slot == 11) {
+            clearTeamHomeDeleteMeta(player);
+            player.closeInventory();
+            HomesMainGui.open(core, player, homeService);
+            player.sendActionBar(Component.text("§cTeam home delete cancelled."));
+            player.sendMessage("§cTeam home delete cancelled.");
+            return;
+        }
+
+        if (slot != 15) {
+            return;
+        }
+
+        if (!confirmed) {
+            player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, true));
+            player.sendActionBar(Component.text("§cClick confirm again to delete team home."));
+            player.sendMessage("§cClick confirm again to delete team home.");
+
+            core.getServer().getScheduler().runTaskLater(core, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+                if (!player.hasMetadata(META_TEAM_HOME_PENDING) || !player.hasMetadata(META_TEAM_HOME_CONFIRM)) {
+                    return;
+                }
+
+                String currentTeamId = player.getMetadata(META_TEAM_HOME_PENDING).get(0).asString();
+                boolean currentConfirmed = player.getMetadata(META_TEAM_HOME_CONFIRM).get(0).asBoolean();
+
+                if (currentTeamId.equals(teamId) && currentConfirmed) {
+                    player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, false));
+                    player.sendActionBar(Component.text("§cTeam home delete timed out."));
+                    player.sendMessage("§cTeam home delete timed out.");
+                }
+            }, 20L * 5);
+
+            return;
+        }
+
+        TeamService teamService = new TeamService(core);
+        TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
+        teamHomeService.deleteTeamHome(teamId);
+
+        clearTeamHomeDeleteMeta(player);
+        player.closeInventory();
+        player.sendActionBar(Component.text("§cTeam Home deleted."));
+        player.sendMessage("§cTeam Home deleted.");
+        HomesMainGui.open(core, player, homeService);
     }
 
     private void handlePlayerDeleteConfirm(Player player, int slot) {
@@ -206,10 +340,15 @@ public final class HomesGuiListener implements Listener {
             if (!player.isOnline()) {
                 return;
             }
+            if (!player.hasMetadata(META_HOME_PENDING) || !player.hasMetadata(META_HOME_CONFIRM)) {
+                return;
+            }
 
-            if (player.hasMetadata(META_HOME_CONFIRM)
-                    && player.getMetadata(META_HOME_CONFIRM).get(0).asInt() == id) {
-                clearPlayerDeleteMeta(player);
+            int pendingId = player.getMetadata(META_HOME_PENDING).get(0).asInt();
+            int currentConfirmValue = player.getMetadata(META_HOME_CONFIRM).get(0).asInt();
+
+            if (pendingId == id && currentConfirmValue == id) {
+                player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, 0));
 
                 String timeoutMessage = core.getMessage("homes.delete-timeout");
                 player.sendActionBar(Component.text(timeoutMessage));
@@ -218,25 +357,14 @@ public final class HomesGuiListener implements Listener {
         }, 20L * Math.max(1, timeout));
     }
 
-    private void handleTeamHomePlaceholderClick(Player player, int slot) {
-        int bannerSlot = core.getConfig().getInt("homes.team-home.banner-slot", 10);
-        int dyeSlot = core.getConfig().getInt("homes.team-home.dye-slot", 19);
-
-        if (slot != bannerSlot && slot != dyeSlot) {
-            return;
-        }
-
-        if (!core.getConfig().getBoolean("homes.team-home.enabled", true)) {
-            return;
-        }
-
-        player.sendMessage(core.getMessage("teams.gui.placeholder-lore-1"));
-        player.sendMessage(core.getMessage("teams.gui.placeholder-lore-2"));
-    }
-
     private void clearPlayerDeleteMeta(Player player) {
         player.removeMetadata(META_HOME_PENDING, core);
         player.removeMetadata(META_HOME_CONFIRM, core);
+    }
+
+    private void clearTeamHomeDeleteMeta(Player player) {
+        player.removeMetadata(META_TEAM_HOME_PENDING, core);
+        player.removeMetadata(META_TEAM_HOME_CONFIRM, core);
     }
 
     private void sendUpgradeMessage(Player player) {

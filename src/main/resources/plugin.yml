@@ -34,7 +34,7 @@ permissions:
   mineaclehomes.use:
     default: true
 
-  mineaclehomes.plus:
+  mineacle.plus:
     default: false
 
   mineaclehomes.admin:
