@@ -2,12 +2,14 @@ package net.mineacle.core.teams.listener;
 
 import net.kyori.adventure.text.Component;
 import net.mineacle.core.Core;
+import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
 import net.mineacle.core.teams.gui.TeamMemberManageGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
+import net.mineacle.core.teams.model.TeamBanRecord;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
@@ -88,6 +90,12 @@ public final class TeamsGuiListener implements Listener {
         if (title.equals(TeamInvitePlayerGui.TITLE(core))) {
             event.setCancelled(true);
             handleInvitePlayerGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals(TeamBansGui.TITLE(core))) {
+            event.setCancelled(true);
+            handleBansGuiClick(player, slot);
             return;
         }
 
@@ -211,19 +219,7 @@ public final class TeamsGuiListener implements Listener {
             }
             case 53 -> {
                 if (teamService.isFounder(player.getUniqueId())) {
-                    TeamRecord currentTeam = teamService.getTeamByPlayer(player.getUniqueId());
-                    if (currentTeam == null) {
-                        return;
-                    }
-
-                    if (!teamHomeService.hasTeamHome(currentTeam.teamId())) {
-                        player.sendMessage(core.getMessage("teams.home.no-home"));
-                        return;
-                    }
-
-                    player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "DELETE_HOME:" + currentTeam.teamId()));
-                    player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    TeamConfirmGui.openDeleteHome(player);
+                    TeamBansGui.open(core, player, team.teamId(), banService, teamService);
                     return;
                 }
 
@@ -310,7 +306,7 @@ public final class TeamsGuiListener implements Listener {
         Player target = candidates.get(slot);
 
         if (banService.isBanned(team.teamId(), target.getUniqueId())) {
-            player.sendMessage("§cThat player is still locked out from this team.");
+            player.sendMessage(core.getMessage("teams.invite.banned-target"));
             return;
         }
 
@@ -330,6 +326,33 @@ public final class TeamsGuiListener implements Listener {
         target.sendMessage(accept.append(spacer).append(deny));
 
         TeamsMainGui.open(core, player, teamService, inviteService);
+    }
+
+    private void handleBansGuiClick(Player player, int slot) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.closeInventory();
+            return;
+        }
+
+        if (slot == 49) {
+            TeamsMainGui.open(core, player, teamService, inviteService);
+            return;
+        }
+
+        if (slot < 0 || slot >= 45) {
+            return;
+        }
+
+        List<TeamBanRecord> bans = banService.getActiveBans(team.teamId());
+        if (slot >= bans.size()) {
+            return;
+        }
+
+        TeamBanRecord selected = bans.get(slot);
+        banService.clearBan(team.teamId(), selected.playerId());
+        player.sendMessage(core.getMessage("teams.bans.unbanned"));
+        TeamBansGui.open(core, player, team.teamId(), banService, teamService);
     }
 
     private void handleManageMemberClick(Player player, int slot) {

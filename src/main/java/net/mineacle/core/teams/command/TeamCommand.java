@@ -3,16 +3,19 @@ package net.mineacle.core.teams.command;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
+import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.service.TeamBanService;
+import net.mineacle.core.teams.service.TeamChatService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -30,13 +33,15 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private final TeamBanService banService;
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
+    private final TeamChatService teamChatService;
 
-    public TeamCommand(Core core, TeamService teamService, TeamBanService banService, TeamInviteService inviteService, TeamHomeService teamHomeService) {
+    public TeamCommand(Core core, TeamService teamService, TeamBanService banService, TeamInviteService inviteService, TeamHomeService teamHomeService, TeamChatService teamChatService) {
         this.core = core;
         this.teamService = teamService;
         this.banService = banService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
+        this.teamChatService = teamChatService;
     }
 
     @Override
@@ -49,6 +54,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         if (!player.hasPermission("mineacleteams.use")) {
             player.sendMessage(core.getMessage("general.no-permission"));
             return true;
+        }
+
+        String commandName = command.getName().toLowerCase(Locale.ROOT);
+
+        if (commandName.equals("teamchat")) {
+            return handleDirectTeamChat(player, args);
         }
 
         if (args.length == 0) {
@@ -83,6 +94,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return handleInviteSearch(player, args);
             case "clearsearch":
                 return handleClearSearch(player);
+            case "bans":
+                return handleBans(player);
+            case "unban":
+                return handleUnban(player, args);
+            case "chat":
+                return handleTeamChatSubcommand(player, args);
             default:
                 player.sendMessage("§cUnknown subcommand.");
                 return true;
@@ -135,6 +152,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         teamService.removeMember(player.getUniqueId());
+        teamChatService.clear(player.getUniqueId());
         TeamGuiSession.clear(player.getUniqueId());
         player.sendMessage(core.getMessage("teams.left-team"));
         return true;
@@ -152,8 +170,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        for (java.util.UUID memberId : teamService.getTeamMembers(team.teamId())) {
+            teamChatService.clear(memberId);
+            TeamGuiSession.clear(memberId);
+        }
+
         teamService.disbandTeam(team.teamId());
-        TeamGuiSession.clear(player.getUniqueId());
         player.sendMessage(core.getMessage("teams.disbanded"));
         return true;
     }
@@ -187,7 +209,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (banService.isBanned(team.teamId(), target.getUniqueId())) {
-            player.sendMessage("§cThat player is still locked out from this team.");
+            player.sendMessage(core.getMessage("teams.invite.banned-target"));
             return true;
         }
 
@@ -225,7 +247,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         if (banService.isBanned(invite.teamId(), player.getUniqueId())) {
             inviteService.denyInvite(player.getUniqueId());
-            player.sendMessage("§cYou are still locked out from that team.");
+            player.sendMessage(core.getMessage("teams.invite.self-banned"));
             return true;
         }
 
@@ -340,6 +362,95 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleBans(Player player) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.sendMessage(core.getMessage("teams.no-team"));
+            return true;
+        }
+
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.sendMessage(core.getMessage("teams.bans.no-permission"));
+            return true;
+        }
+
+        TeamBansGui.open(core, player, team.teamId(), banService, teamService);
+        return true;
+    }
+
+    private boolean handleUnban(Player player, String[] args) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.sendMessage(core.getMessage("teams.no-team"));
+            return true;
+        }
+
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.sendMessage(core.getMessage("teams.bans.no-permission"));
+            return true;
+        }
+
+        if (args.length != 2) {
+            player.sendMessage(core.getMessage("teams.bans.usage"));
+            return true;
+        }
+
+        OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
+        if (!banService.isBanned(team.teamId(), target.getUniqueId())) {
+            player.sendMessage(core.getMessage("teams.bans.not-banned"));
+            return true;
+        }
+
+        banService.clearBan(team.teamId(), target.getUniqueId());
+        player.sendMessage(core.getMessage("teams.bans.unbanned"));
+        return true;
+    }
+
+    private boolean handleTeamChatSubcommand(Player player, String[] args) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.sendMessage(core.getMessage("teams.chat.not-in-team"));
+            return true;
+        }
+
+        if (args.length == 1) {
+            boolean enabled = teamChatService.toggle(player.getUniqueId());
+            player.sendMessage(enabled ? core.getMessage("teams.chat.enabled") : core.getMessage("teams.chat.disabled"));
+            return true;
+        }
+
+        String message = joinArgs(args, 1);
+        if (message.isBlank()) {
+            player.sendMessage(core.getMessage("teams.chat.usage"));
+            return true;
+        }
+
+        teamChatService.sendTeamMessage(player, message);
+        return true;
+    }
+
+    private boolean handleDirectTeamChat(Player player, String[] args) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.sendMessage(core.getMessage("teams.chat.not-in-team"));
+            return true;
+        }
+
+        if (args.length < 1) {
+            player.sendMessage("§cUsage: /teamchat <message>");
+            return true;
+        }
+
+        String message = joinArgs(args, 0);
+        if (message.isBlank()) {
+            player.sendMessage("§cUsage: /teamchat <message>");
+            return true;
+        }
+
+        teamChatService.sendTeamMessage(player, message);
+        return true;
+    }
+
     private String joinArgs(String[] args, int startIndex) {
         StringBuilder builder = new StringBuilder();
         for (int i = startIndex; i < args.length; i++) {
@@ -353,10 +464,15 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        String commandName = command.getName().toLowerCase(Locale.ROOT);
         List<String> completions = new ArrayList<>();
 
+        if (commandName.equals("teamchat")) {
+            return completions;
+        }
+
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "search", "invitesearch", "clearsearch")) {
+            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "search", "invitesearch", "clearsearch", "bans", "unban", "chat")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     completions.add(option);
                 }

@@ -3,12 +3,16 @@ package net.mineacle.core.teams;
 import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.teams.command.TeamCommand;
+import net.mineacle.core.teams.listener.TeamChatListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
 import net.mineacle.core.teams.service.TeamBanService;
+import net.mineacle.core.teams.service.TeamChatService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
+import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
+import org.bukkit.command.TabCompleter;
 
 public final class TeamsModule extends Module {
 
@@ -17,6 +21,7 @@ public final class TeamsModule extends Module {
     private TeamBanService banService;
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
+    private TeamChatService teamChatService;
 
     @Override
     public String name() {
@@ -30,12 +35,19 @@ public final class TeamsModule extends Module {
         this.banService = new TeamBanService(core);
         this.inviteService = new TeamInviteService(core, teamService, banService);
         this.teamHomeService = new TeamHomeService(core, teamService);
+        this.teamChatService = new TeamChatService(core, teamService);
 
-        TeamCommand teamCommand = new TeamCommand(core, teamService, banService, inviteService, teamHomeService);
-        registerCommand("team", teamCommand);
+        TeamCommand teamCommand = new TeamCommand(core, teamService, banService, inviteService, teamHomeService, teamChatService);
+        registerCommand("team", teamCommand, teamCommand);
+        registerCommand("teamchat", teamCommand, teamCommand);
 
         core.getServer().getPluginManager().registerEvents(
                 new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService),
+                core
+        );
+
+        core.getServer().getPluginManager().registerEvents(
+                new TeamChatListener(teamChatService),
                 core
         );
     }
@@ -47,7 +59,7 @@ public final class TeamsModule extends Module {
         }
     }
 
-    private void registerCommand(String name, TeamCommand executor) {
+    private void registerCommand(String name, CommandExecutor executor, TabCompleter completer) {
         PluginCommand command = core.getCommand(name);
         if (command == null) {
             core.getLogger().warning("Missing command in plugin.yml: " + name);
@@ -55,6 +67,6 @@ public final class TeamsModule extends Module {
         }
 
         command.setExecutor(executor);
-        command.setTabCompleter(executor);
+        command.setTabCompleter(completer);
     }
 }

@@ -3,7 +3,10 @@ package net.mineacle.core.teams.service;
 import net.mineacle.core.Core;
 import net.mineacle.core.teams.model.TeamBanRecord;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.configuration.file.ConfigurationSection;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public final class TeamBanService {
@@ -50,6 +53,32 @@ public final class TeamBanService {
         }
 
         return record;
+    }
+
+    public List<TeamBanRecord> getActiveBans(String teamId) {
+        List<TeamBanRecord> bans = new ArrayList<>();
+
+        if (teamId == null || teamId.isBlank()) {
+            return bans;
+        }
+
+        ConfigurationSection section = core.getTeamsConfig().getConfigurationSection("bans." + teamId);
+        if (section == null) {
+            return bans;
+        }
+
+        for (String playerIdRaw : section.getKeys(false)) {
+            try {
+                UUID playerId = UUID.fromString(playerIdRaw);
+                TeamBanRecord record = getBan(teamId, playerId);
+                if (record != null) {
+                    bans.add(record);
+                }
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+
+        return bans;
     }
 
     public boolean isBanned(String teamId, UUID playerId) {

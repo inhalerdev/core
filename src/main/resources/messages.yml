@@ -57,6 +57,8 @@ teams:
     denied: "&cTeam invite denied."
     none: "&cYou do not have a pending team invite."
     team-gone: "&cThat team no longer exists."
+    banned-target: "&cThat player is still locked out from this team."
+    self-banned: "&cYou are still locked out from that team."
 
   home:
     no-home: "&cYour team does not have a home set."
@@ -71,6 +73,13 @@ teams:
     enabled: "&cFriendly fire enabled."
     disabled: "&aFriendly fire disabled."
 
+  chat:
+    enabled: "&aTeam chat enabled."
+    disabled: "&cTeam chat disabled."
+    usage: "&cUsage: /team chat <message>"
+    format: "&8[&dTeam&8] &d%player%&8: &f%message%"
+    not-in-team: "&cYou are not in a team."
+
   management:
     promote-founder-only: "&cOnly the founder can promote members."
     demote-founder-only: "&cOnly the founder can demote members."
@@ -83,12 +92,20 @@ teams:
     already-founder: "&cThat player is already founder."
     transfer-success: "&6Founder transferred."
 
+  bans:
+    no-permission: "&cYou do not have permission to manage team bans."
+    none: "&7Your team has no active bans."
+    unbanned: "&aPlayer unbanned."
+    not-banned: "&cThat player is not actively banned from your team."
+    usage: "&cUsage: /team unban <player>"
+
   gui:
     no-team-title: "&8Team Menu"
     team-title: "&8Team"
     member-manager-title: "&8Member Manager"
     invites-title: "&8Team Invites"
     invite-player-title: "&8Invite Player"
+    bans-title: "&8Team Bans"
 
     create-team-title: "&dCreate Team"
     create-team-lore-1: "&7Use &d/team create <name>"
@@ -130,6 +147,8 @@ teams:
     disband-lore-1: "&7Click to continue"
     delete-team-home-title: "&cDelete Team Home"
     delete-team-home-lore-1: "&7Click to continue"
+    bans-button-title: "&6Team Bans"
+    bans-button-lore-1: "&7Click to view active bans"
 
     member-manager-role: "&7Role: &d%role%"
     promote-title: "&aPromote"
@@ -162,6 +181,12 @@ teams:
     invite-search-lore-current: "&7Current: &f%search%"
     clear-search-title: "&cClear Search"
     clear-search-lore-1: "&7Reset player filter"
+
+    ban-head-lore-1: "&7Expires: &d%expires%"
+    ban-head-lore-2: "&7Banned by: &d%banned_by%"
+    ban-head-lore-3: "&7Click to unban"
+    no-ban-title: "&7No Active Bans"
+    no-ban-lore-1: "&fYour team has no active bans"
 
     click-again: "&cClick confirm again to continue."
     action-cancelled: "&cAction cancelled."

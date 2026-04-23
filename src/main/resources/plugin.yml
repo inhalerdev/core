@@ -30,6 +30,11 @@ commands:
     description: Open your team menu
     permission: mineacleteams.use
 
+  teamchat:
+    description: Send a message to team chat
+    aliases: [tc]
+    permission: mineacleteams.use
+
 permissions:
   mineaclehomes.use:
     default: true

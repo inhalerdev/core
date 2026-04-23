@@ -176,10 +176,10 @@ public final class TeamsMainGui {
         ));
 
         inventory.setItem(53, item(
-                teamService.isFounder(player.getUniqueId()) ? Material.PURPLE_DYE : (team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER),
-                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.delete-team-home-title") : core.getMessage("teams.gui.friendly-fire-title"),
+                teamService.isFounder(player.getUniqueId()) ? Material.PAPER : (team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER),
+                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.bans-button-title") : core.getMessage("teams.gui.friendly-fire-title"),
                 teamService.isFounder(player.getUniqueId())
-                        ? List.of(core.getMessage("teams.gui.delete-team-home-lore-1"))
+                        ? List.of(core.getMessage("teams.gui.bans-button-lore-1"))
                         : List.of(
                                 team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
                                 core.getMessage("teams.gui.friendly-fire-lore-2")
