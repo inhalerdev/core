@@ -1,0 +1,27 @@
+homes:
+  max-homes:
+    default: 2
+    plus: 5
+  plus-permission: mineaclehomes.plus
+
+  blocked-set-worlds: []
+
+  teleport:
+    delay-seconds: 5
+    cancel-on-move: true
+
+  delete-confirm:
+    timeout-seconds: 5
+
+  team-home:
+    enabled: true
+    banner-slot: 10
+    dye-slot: 19
+    teleport-delay-seconds: 5
+    delete-confirm-timeout-seconds: 5
+
+teams:
+  enabled: false
+  max-members: 25
+  default-role: member
+  team-home-enabled: true

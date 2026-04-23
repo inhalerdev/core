@@ -1,0 +1,47 @@
+name: MineacleCore
+main: net.mineacle.core.Core
+version: 1.0.0
+api-version: "1.21"
+author: Mineacle
+
+commands:
+  home:
+    description: Open your homes menu
+    aliases: [homes]
+    permission: mineaclehomes.use
+
+  sethome:
+    description: Set a named home
+    permission: mineaclehomes.use
+
+  delhome:
+    description: Delete a named home
+    permission: mineaclehomes.use
+
+  renamehome:
+    description: Rename a saved home
+    permission: mineaclehomes.use
+
+  mineaclehomes:
+    description: Reload homes config
+    permission: mineaclehomes.admin
+
+  team:
+    description: Open your team menu
+    permission: mineacleteams.use
+
+permissions:
+  mineaclehomes.use:
+    default: true
+
+  mineaclehomes.plus:
+    default: false
+
+  mineaclehomes.admin:
+    default: op
+
+  mineacleteams.use:
+    default: true
+
+  mineacleteams.admin:
+    default: op

@@ -1,0 +1,54 @@
+general:
+  players-only: "&cPlayers only."
+  no-permission: "&cThis feature is not available for your rank."
+  reload-success: "&aMineacleCore files reloaded."
+
+homes:
+  blocked-world: "&cYou cannot set a home in this world."
+  blocked-team-home-world: "&cYou cannot set a team home in this world."
+
+  set: "&7You set &d%home% &7to your current location"
+  renamed: "&7Renamed &d%old_home% &7to &d%new_home%"
+  deleted: "&c%home% deleted"
+  delete-cancelled: "&cHome delete cancelled"
+  delete-confirm: "&cClick again to confirm delete"
+  delete-timeout: "&cHome delete timed out"
+  not-set: "&c%home% is not set"
+  no-empty-slot: "&cYou have reached your home limit."
+  invalid-name: "&cThat home name is not valid."
+  already-exists: "&cYou already have a home named &d%home%&c."
+
+  teleporting: "&7Teleporting to &d%target% &7in &d%seconds%s"
+  teleport-cancelled-move: "&cTeleport cancelled — you moved"
+  teleported: "&7Teleported to &d%home%"
+
+  upgrade-line-1: "&fElevate your gameplay experience with &dMineacle+"
+  upgrade-line-2: "&d♦ &fhttps://store.mineacle.net"
+
+  gui:
+    title: "&8Player Homes"
+    delete-title: "&8Confirm Delete"
+    team-delete-title: "&8Delete Team Home"
+    click-delete-again-chat: "&cClick confirm again to delete &f%home%&c."
+    click-delete-again-actionbar: "&cClick again to delete &f%home%"
+    delete-cancelled-chat: "&cHome delete cancelled"
+    delete-timeout-chat: "&cHome delete timed out"
+
+teams:
+  no-team: "&cYou are not in a team"
+  no-team-home: "&cYour team does not have a home yet"
+  ask-owner-set-home: "&7Ask your &dteam owner &7to set Team Home"
+  team-home-set: "&7Team Home set to your current location"
+  team-home-deleted: "&cTeam Home deleted"
+  team-home-delete-cancelled: "&cTeam home delete cancelled"
+  team-home-delete-confirm: "&cClick again to confirm Team Home delete"
+  team-home-delete-timeout: "&cTeam home delete timed out"
+  teleported-team-home: "&7Teleported to &dTeam Home"
+
+  gui:
+    no-team-title: "&7No Team"
+    no-team-lore-1: "&fYou are not in a team"
+    no-team-lore-2: "&7Create a team to unlock this"
+    placeholder-title: "&7Team Home Unavailable"
+    placeholder-lore-1: "&fTeams are not ready yet"
+    placeholder-lore-2: "&7This slot will connect later"
