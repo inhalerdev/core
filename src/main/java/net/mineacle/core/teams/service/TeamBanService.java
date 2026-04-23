@@ -2,8 +2,8 @@ package net.mineacle.core.teams.service;
 
 import net.mineacle.core.Core;
 import net.mineacle.core.teams.model.TeamBanRecord;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
-import org.bukkit.configuration.file.ConfigurationSection;
 
 import java.util.ArrayList;
 import java.util.List;

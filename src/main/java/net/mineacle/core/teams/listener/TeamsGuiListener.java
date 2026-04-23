@@ -292,12 +292,22 @@ public final class TeamsGuiListener implements Listener {
 
         String search = TeamGuiSession.getInviteSearch(player.getUniqueId()).toLowerCase(Locale.ROOT);
 
-        List<Player> candidates = Bukkit.getOnlinePlayers().stream()
-                .filter(online -> !online.getUniqueId().equals(player.getUniqueId()))
-                .filter(online -> !teamService.hasTeam(online.getUniqueId()))
-                .filter(online -> search.isBlank() || online.getName().toLowerCase(Locale.ROOT).contains(search))
-                .limit(45)
-                .toList();
+        List<Player> candidates = new ArrayList<>();
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.getUniqueId().equals(player.getUniqueId())) {
+                continue;
+            }
+            if (teamService.hasTeam(online.getUniqueId())) {
+                continue;
+            }
+            if (!search.isBlank() && !online.getName().toLowerCase(Locale.ROOT).contains(search)) {
+                continue;
+            }
+            if (candidates.size() >= 45) {
+                break;
+            }
+            candidates.add(online);
+        }
 
         if (slot >= candidates.size()) {
             return;
