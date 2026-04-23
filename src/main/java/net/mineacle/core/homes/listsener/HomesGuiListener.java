@@ -15,6 +15,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
+import java.util.UUID;
+
 public final class HomesGuiListener implements Listener {
 
     private static final String META_HOME_PENDING = "mh_pendingDelete";
@@ -80,20 +82,22 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
-        if (homeService.exists(player.getUniqueId(), id)) {
-            Location target = homeService.get(player.getUniqueId(), id);
+        UUID uuid = player.getUniqueId();
+
+        if (homeService.exists(uuid, id)) {
+            Location target = homeService.get(uuid, id);
             if (target == null) {
-                player.sendMessage(core.getMessage("homes.not-set").replace("%home%", homeService.getDisplayName(id)));
+                player.sendMessage(core.getMessage("homes.not-set").replace("%home%", homeService.getDisplayName(uuid, id)));
                 return;
             }
 
             player.closeInventory();
 
-            teleportService.begin(player, homeService.getDisplayName(id), () -> {
+            teleportService.begin(player, homeService.getDisplayName(uuid, id), () -> {
                 player.teleport(target);
 
                 String message = core.getMessage("homes.teleported")
-                        .replace("%home%", homeService.getDisplayName(id));
+                        .replace("%home%", homeService.getDisplayName(uuid, id));
                 player.sendActionBar(Component.text(message));
                 player.sendMessage(message);
             });
@@ -107,10 +111,10 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
-        homeService.set(player.getUniqueId(), id, player.getLocation());
+        homeService.set(uuid, id, player.getLocation(), homeService.getDefaultDisplayName(id));
 
         String message = core.getMessage("homes.set")
-                .replace("%home%", homeService.getDisplayName(id));
+                .replace("%home%", homeService.getDisplayName(uuid, id));
         player.sendActionBar(Component.text(message));
         player.sendMessage(message);
 
@@ -123,7 +127,9 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
-        if (!homeService.exists(player.getUniqueId(), id)) {
+        UUID uuid = player.getUniqueId();
+
+        if (!homeService.exists(uuid, id)) {
             if (worldRules.isBlockedWorld(player.getLocation())) {
                 String message = core.getMessage("homes.blocked-world");
                 player.sendActionBar(Component.text(message));
@@ -131,10 +137,10 @@ public final class HomesGuiListener implements Listener {
                 return;
             }
 
-            homeService.set(player.getUniqueId(), id, player.getLocation());
+            homeService.set(uuid, id, player.getLocation(), homeService.getDefaultDisplayName(id));
 
             String message = core.getMessage("homes.set")
-                    .replace("%home%", homeService.getDisplayName(id));
+                    .replace("%home%", homeService.getDisplayName(uuid, id));
             player.sendActionBar(Component.text(message));
             player.sendMessage(message);
 
@@ -144,7 +150,7 @@ public final class HomesGuiListener implements Listener {
 
         player.setMetadata(META_HOME_PENDING, new FixedMetadataValue(core, id));
         player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, 0));
-        ConfirmDeleteHomeGui.openPlayerDelete(core, player, id);
+        ConfirmDeleteHomeGui.openPlayerDelete(core, player, id, homeService.getDisplayName(uuid, id));
     }
 
     private void handlePlayerDeleteConfirm(Player player, int slot) {
@@ -154,6 +160,7 @@ public final class HomesGuiListener implements Listener {
         }
 
         int id = player.getMetadata(META_HOME_PENDING).get(0).asInt();
+        String displayName = homeService.getDisplayName(player.getUniqueId(), id);
 
         if (slot == 11) {
             clearPlayerDeleteMeta(player);
@@ -178,7 +185,7 @@ public final class HomesGuiListener implements Listener {
             player.closeInventory();
 
             String message = core.getMessage("homes.deleted")
-                    .replace("%home%", homeService.getDisplayName(id));
+                    .replace("%home%", displayName);
             player.sendActionBar(Component.text(message));
             player.sendMessage(message);
             return;
@@ -186,9 +193,13 @@ public final class HomesGuiListener implements Listener {
 
         player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, id));
 
-        String message = core.getMessage("homes.delete-confirm");
-        player.sendActionBar(Component.text(message));
-        player.sendMessage(message);
+        String actionBar = core.getMessage("homes.gui.click-delete-again-actionbar")
+                .replace("%home%", displayName);
+        String chat = core.getMessage("homes.gui.click-delete-again-chat")
+                .replace("%home%", displayName);
+
+        player.sendActionBar(Component.text(actionBar));
+        player.sendMessage(chat);
 
         int timeout = core.getConfig().getInt("homes.delete-confirm.timeout-seconds", 5);
         core.getServer().getScheduler().runTaskLater(core, () -> {
@@ -219,10 +230,8 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
-        String line1 = core.getMessage("teams.gui.placeholder-lore-1");
-        String line2 = core.getMessage("teams.gui.placeholder-lore-2");
-        player.sendMessage(line1);
-        player.sendMessage(line2);
+        player.sendMessage(core.getMessage("teams.gui.placeholder-lore-1"));
+        player.sendMessage(core.getMessage("teams.gui.placeholder-lore-2"));
     }
 
     private void clearPlayerDeleteMeta(Player player) {

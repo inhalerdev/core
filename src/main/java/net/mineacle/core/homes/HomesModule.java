@@ -34,6 +34,7 @@ public final class HomesModule extends Module {
         registerCommand("home", homeCommand);
         registerCommand("sethome", homeCommand);
         registerCommand("delhome", homeCommand);
+        registerCommand("renamehome", homeCommand);
         registerCommand("mineaclehomes", homeCommand);
 
         core.getServer().getPluginManager().registerEvents(
