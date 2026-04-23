@@ -11,10 +11,12 @@ public final class TeamInviteService {
 
     private final Core core;
     private final TeamService teamService;
+    private final TeamBanService banService;
 
-    public TeamInviteService(Core core, TeamService teamService) {
+    public TeamInviteService(Core core, TeamService teamService, TeamBanService banService) {
         this.core = core;
         this.teamService = teamService;
+        this.banService = banService;
     }
 
     public TeamInviteRecord getInvite(UUID inviteeId) {
@@ -45,6 +47,10 @@ public final class TeamInviteService {
             return false;
         }
 
+        if (banService.isBanned(teamId, inviteeId)) {
+            return false;
+        }
+
         FileConfiguration config = core.getTeamsConfig();
         config.set("invites." + inviteeId + ".team", teamId);
         config.set("invites." + inviteeId + ".inviter", inviterId.toString());
@@ -70,6 +76,11 @@ public final class TeamInviteService {
         }
 
         if (teamService.hasTeam(inviteeId)) {
+            denyInvite(inviteeId);
+            return false;
+        }
+
+        if (banService.isBanned(invite.teamId(), inviteeId)) {
             denyInvite(inviteeId);
             return false;
         }

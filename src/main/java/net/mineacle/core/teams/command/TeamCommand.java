@@ -1,9 +1,14 @@
 package net.mineacle.core.teams.command;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
+import net.mineacle.core.teams.gui.TeamGuiSession;
+import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
+import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
@@ -22,12 +27,14 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private final Core core;
     private final TeamService teamService;
+    private final TeamBanService banService;
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
 
-    public TeamCommand(Core core, TeamService teamService, TeamInviteService inviteService, TeamHomeService teamHomeService) {
+    public TeamCommand(Core core, TeamService teamService, TeamBanService banService, TeamInviteService inviteService, TeamHomeService teamHomeService) {
         this.core = core;
         this.teamService = teamService;
+        this.banService = banService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
     }
@@ -70,6 +77,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return handleSetHome(player);
             case "delhome":
                 return handleDeleteHome(player);
+            case "search":
+                return handleSearch(player, args);
+            case "invitesearch":
+                return handleInviteSearch(player, args);
+            case "clearsearch":
+                return handleClearSearch(player);
             default:
                 player.sendMessage("§cUnknown subcommand.");
                 return true;
@@ -85,17 +98,17 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         String teamName = joinArgs(args, 1);
 
         if (!teamService.isValidTeamName(teamName)) {
-            player.sendMessage("§cThat team name is not valid.");
+            player.sendMessage(core.getMessage("teams.invalid-name"));
             return true;
         }
 
         if (teamService.hasTeam(player.getUniqueId())) {
-            player.sendMessage("§cYou are already in a team.");
+            player.sendMessage(core.getMessage("teams.already-in-team"));
             return true;
         }
 
         if (teamService.getTeamByName(teamName) != null) {
-            player.sendMessage("§cThat team name is already taken.");
+            player.sendMessage(core.getMessage("teams.taken-name"));
             return true;
         }
 
@@ -104,7 +117,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage("§7Created team §d" + teamName);
+        player.sendMessage(core.getMessage("teams.created").replace("%team%", teamName));
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
@@ -112,87 +125,107 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private boolean handleLeave(Player player) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         if (teamService.isFounder(player.getUniqueId())) {
-            player.sendMessage("§cFounders cannot leave. Disband the team instead.");
+            player.sendMessage(core.getMessage("teams.founders-cannot-leave"));
             return true;
         }
 
         teamService.removeMember(player.getUniqueId());
-        player.sendMessage("§cYou left your team.");
+        TeamGuiSession.clear(player.getUniqueId());
+        player.sendMessage(core.getMessage("teams.left-team"));
         return true;
     }
 
     private boolean handleDisband(Player player) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         if (!teamService.isFounder(player.getUniqueId())) {
-            player.sendMessage("§cOnly the founder can disband the team.");
+            player.sendMessage(core.getMessage("teams.only-founder-disband"));
             return true;
         }
 
         teamService.disbandTeam(team.teamId());
-        player.sendMessage("§cTeam disbanded.");
+        TeamGuiSession.clear(player.getUniqueId());
+        player.sendMessage(core.getMessage("teams.disbanded"));
         return true;
     }
 
     private boolean handleInvite(Player player, String[] args) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            player.sendMessage("§cYou do not have permission to invite players.");
+            player.sendMessage(core.getMessage("teams.invite.no-permission"));
             return true;
         }
 
         if (args.length != 2) {
-            player.sendMessage("§cUsage: /team invite <player>");
+            player.sendMessage(core.getMessage("teams.invite.usage"));
             return true;
         }
 
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null) {
-            player.sendMessage("§cThat player is not online.");
+            player.sendMessage(core.getMessage("teams.invite.offline"));
             return true;
         }
 
         if (teamService.hasTeam(target.getUniqueId())) {
-            player.sendMessage("§cThat player is already in a team.");
+            player.sendMessage(core.getMessage("teams.invite.target-in-team"));
+            return true;
+        }
+
+        if (banService.isBanned(team.teamId(), target.getUniqueId())) {
+            player.sendMessage("§cThat player is still locked out from this team.");
             return true;
         }
 
         if (!inviteService.createInvite(team.teamId(), player.getUniqueId(), target.getUniqueId())) {
-            player.sendMessage("§cCould not invite that player.");
+            player.sendMessage(core.getMessage("teams.invite.failed"));
             return true;
         }
 
-        player.sendMessage("§7Invited §d" + target.getName() + " §7to the team.");
-        target.sendMessage("§7You were invited to team §d" + team.name());
-        target.sendMessage("§7Use §d/team accept §7or §d/team deny");
+        player.sendMessage(core.getMessage("teams.invite.sent").replace("%player%", target.getName()));
+        target.sendMessage(core.getMessage("teams.invite.received-1").replace("%team%", team.name()));
+
+        Component accept = Component.text("§a[ACCEPT]")
+                .clickEvent(ClickEvent.runCommand("/team accept"));
+        Component spacer = Component.text(" §7or ");
+        Component deny = Component.text("§c[DENY]")
+                .clickEvent(ClickEvent.runCommand("/team deny"));
+
+        target.sendMessage(accept.append(spacer).append(deny));
         return true;
     }
 
     private boolean handleAccept(Player player) {
         TeamInviteRecord invite = inviteService.getInvite(player.getUniqueId());
         if (invite == null) {
-            player.sendMessage("§cYou do not have a pending team invite.");
+            player.sendMessage(core.getMessage("teams.invite.none"));
             return true;
         }
 
         TeamRecord team = teamService.getTeamById(invite.teamId());
         if (team == null) {
             inviteService.denyInvite(player.getUniqueId());
-            player.sendMessage("§cThat team no longer exists.");
+            player.sendMessage(core.getMessage("teams.invite.team-gone"));
+            return true;
+        }
+
+        if (banService.isBanned(invite.teamId(), player.getUniqueId())) {
+            inviteService.denyInvite(player.getUniqueId());
+            player.sendMessage("§cYou are still locked out from that team.");
             return true;
         }
 
@@ -201,7 +234,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage("§7Joined team §d" + team.name());
+        player.sendMessage(core.getMessage("teams.invite.accepted").replace("%team%", team.name()));
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
@@ -209,68 +242,101 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     private boolean handleDeny(Player player) {
         TeamInviteRecord invite = inviteService.getInvite(player.getUniqueId());
         if (invite == null) {
-            player.sendMessage("§cYou do not have a pending team invite.");
+            player.sendMessage(core.getMessage("teams.invite.none"));
             return true;
         }
 
         inviteService.denyInvite(player.getUniqueId());
-        player.sendMessage("§cTeam invite denied.");
+        player.sendMessage(core.getMessage("teams.invite.denied"));
         return true;
     }
 
     private boolean handleHome(Player player) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
         if (home == null) {
-            player.sendMessage("§cYour team does not have a home set.");
+            player.sendMessage(core.getMessage("teams.home.no-home"));
             return true;
         }
 
         player.teleport(home);
-        player.sendMessage("§7Teleported to §dTeam Home");
+        player.sendMessage(core.getMessage("teams.home.teleported"));
         return true;
     }
 
     private boolean handleSetHome(Player player) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            player.sendMessage("§cYou do not have permission to set the team home.");
+            player.sendMessage(core.getMessage("teams.home.no-set-permission"));
             return true;
         }
 
         teamHomeService.setTeamHome(team.teamId(), player.getLocation());
-        player.sendMessage("§7Team Home set to your current location");
+        player.sendMessage(core.getMessage("teams.home.set"));
         return true;
     }
 
     private boolean handleDeleteHome(Player player) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
+            player.sendMessage(core.getMessage("teams.no-team"));
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            player.sendMessage("§cYou do not have permission to delete the team home.");
+            player.sendMessage(core.getMessage("teams.home.no-delete-permission"));
             return true;
         }
 
         if (!teamHomeService.deleteTeamHome(team.teamId())) {
-            player.sendMessage("§cYour team does not have a home set.");
+            player.sendMessage(core.getMessage("teams.home.no-home"));
             return true;
         }
 
-        player.sendMessage("§cTeam Home deleted.");
+        player.sendMessage(core.getMessage("teams.home.deleted"));
+        return true;
+    }
+
+    private boolean handleSearch(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage("§cUsage: /team search <name>");
+            return true;
+        }
+
+        String query = joinArgs(args, 1);
+        TeamGuiSession.setMemberSearch(player.getUniqueId(), query);
+        TeamGuiSession.setPage(player.getUniqueId(), 0);
+        TeamsMainGui.open(core, player, teamService, inviteService);
+        return true;
+    }
+
+    private boolean handleInviteSearch(Player player, String[] args) {
+        if (args.length < 2) {
+            player.sendMessage("§cUsage: /team invitesearch <name>");
+            return true;
+        }
+
+        String query = joinArgs(args, 1);
+        TeamGuiSession.setInviteSearch(player.getUniqueId(), query);
+        TeamInvitePlayerGui.open(core, player, teamService);
+        return true;
+    }
+
+    private boolean handleClearSearch(Player player) {
+        TeamGuiSession.setMemberSearch(player.getUniqueId(), "");
+        TeamGuiSession.setInviteSearch(player.getUniqueId(), "");
+        TeamGuiSession.setPage(player.getUniqueId(), 0);
+        TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
 
@@ -290,7 +356,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         List<String> completions = new ArrayList<>();
 
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome")) {
+            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "search", "invitesearch", "clearsearch")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     completions.add(option);
                 }

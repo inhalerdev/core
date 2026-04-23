@@ -4,9 +4,13 @@ import net.mineacle.core.Core;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
+import net.mineacle.core.teams.model.TeamSortType;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
@@ -197,6 +201,33 @@ public final class TeamService {
         return members;
     }
 
+    public List<UUID> getSortedTeamMembers(String teamId, TeamSortType sortType) {
+        List<UUID> members = new ArrayList<>(getTeamMembers(teamId));
+
+        Comparator<UUID> comparator = switch (sortType) {
+            case JOIN_DATE -> Comparator.comparingLong(uuid -> {
+                TeamMemberRecord member = getMember(uuid);
+                return member == null ? Long.MAX_VALUE : member.joinedAt();
+            });
+            case PERMISSIONS -> Comparator.comparingInt(uuid -> roleWeight(getMember(uuid) == null ? TeamRole.MEMBER : getMember(uuid).role()));
+            case ALPHABETICALLY -> Comparator.comparing(uuid -> {
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                String name = offlinePlayer.getName();
+                return name == null ? uuid.toString() : name.toLowerCase(Locale.ROOT);
+            });
+            case ONLINE_MEMBERS -> Comparator
+                    .comparing((UUID uuid) -> Bukkit.getPlayer(uuid) == null)
+                    .thenComparing(uuid -> {
+                        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(uuid);
+                        String name = offlinePlayer.getName();
+                        return name == null ? uuid.toString() : name.toLowerCase(Locale.ROOT);
+                    });
+        };
+
+        members.sort(comparator);
+        return members;
+    }
+
     public int getTeamMemberCount(String teamId) {
         return getTeamMembers(teamId).size();
     }
@@ -220,5 +251,52 @@ public final class TeamService {
         core.getTeamsConfig().set("teams." + teamId + ".friendly-fire", enabled);
         core.saveTeamsFile();
         return true;
+    }
+
+    public boolean setMemberRole(UUID playerId, TeamRole role) {
+        TeamMemberRecord member = getMember(playerId);
+        if (member == null) {
+            return false;
+        }
+
+        core.getTeamsConfig().set("members." + playerId + ".role", role.name());
+        core.saveTeamsFile();
+        return true;
+    }
+
+    public boolean transferFounder(String teamId, UUID oldFounder, UUID newFounder) {
+        TeamRecord team = getTeamById(teamId);
+        if (team == null) {
+            return false;
+        }
+
+        TeamMemberRecord oldMember = getMember(oldFounder);
+        TeamMemberRecord newMember = getMember(newFounder);
+
+        if (oldMember == null || newMember == null) {
+            return false;
+        }
+
+        if (!oldMember.teamId().equals(teamId) || !newMember.teamId().equals(teamId)) {
+            return false;
+        }
+
+        if (oldMember.role() != TeamRole.FOUNDER) {
+            return false;
+        }
+
+        core.getTeamsConfig().set("teams." + teamId + ".founder", newFounder.toString());
+        core.getTeamsConfig().set("members." + oldFounder + ".role", TeamRole.ADMIN.name());
+        core.getTeamsConfig().set("members." + newFounder + ".role", TeamRole.FOUNDER.name());
+        core.saveTeamsFile();
+        return true;
+    }
+
+    private int roleWeight(TeamRole role) {
+        return switch (role) {
+            case FOUNDER -> 0;
+            case ADMIN -> 1;
+            case MEMBER -> 2;
+        };
     }
 }

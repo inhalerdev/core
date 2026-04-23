@@ -4,6 +4,7 @@ import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.teams.command.TeamCommand;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
+import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
@@ -13,6 +14,7 @@ public final class TeamsModule extends Module {
 
     private Core core;
     private TeamService teamService;
+    private TeamBanService banService;
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
 
@@ -25,14 +27,15 @@ public final class TeamsModule extends Module {
     public void enable(Core core) {
         this.core = core;
         this.teamService = new TeamService(core);
-        this.inviteService = new TeamInviteService(core, teamService);
+        this.banService = new TeamBanService(core);
+        this.inviteService = new TeamInviteService(core, teamService, banService);
         this.teamHomeService = new TeamHomeService(core, teamService);
 
-        TeamCommand teamCommand = new TeamCommand(core, teamService, inviteService, teamHomeService);
+        TeamCommand teamCommand = new TeamCommand(core, teamService, banService, inviteService, teamHomeService);
         registerCommand("team", teamCommand);
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, inviteService, teamHomeService),
+                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService),
                 core
         );
     }
@@ -53,17 +56,5 @@ public final class TeamsModule extends Module {
 
         command.setExecutor(executor);
         command.setTabCompleter(executor);
-    }
-
-    public TeamService teamService() {
-        return teamService;
-    }
-
-    public TeamInviteService inviteService() {
-        return inviteService;
-    }
-
-    public TeamHomeService teamHomeService() {
-        return teamHomeService;
     }
 }

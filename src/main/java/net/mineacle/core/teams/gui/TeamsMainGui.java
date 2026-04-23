@@ -2,6 +2,7 @@ package net.mineacle.core.teams.gui;
 
 import net.mineacle.core.Core;
 import net.mineacle.core.teams.model.TeamRecord;
+import net.mineacle.core.teams.model.TeamSortType;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
@@ -13,13 +14,20 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 public final class TeamsMainGui {
 
-    public static final String NO_TEAM_TITLE = ChatColor.DARK_GRAY + "Team Menu";
-    public static final String TEAM_TITLE = ChatColor.DARK_GRAY + "Your Team";
+    public static String NO_TEAM_TITLE(Core core) {
+        return color(core.getMessage("teams.gui.no-team-title"));
+    }
+
+    public static String TEAM_TITLE(Core core) {
+        return color(core.getMessage("teams.gui.team-title"));
+    }
 
     private TeamsMainGui() {
     }
@@ -28,114 +36,177 @@ public final class TeamsMainGui {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            openNoTeamMenu(player, inviteService.hasInvite(player.getUniqueId()));
+            openNoTeamMenu(core, player, inviteService.hasInvite(player.getUniqueId()));
             return;
         }
 
-        openTeamMenu(player, teamService, team);
+        openTeamMenu(core, player, teamService, team);
     }
 
-    private static void openNoTeamMenu(Player player, boolean hasInvite) {
-        Inventory inventory = Bukkit.createInventory(null, 27, NO_TEAM_TITLE);
+    private static void openNoTeamMenu(Core core, Player player, boolean hasInvite) {
+        Inventory inventory = Bukkit.createInventory(null, 27, NO_TEAM_TITLE(core));
 
         inventory.setItem(11, item(
                 Material.NAME_TAG,
-                "&dCreate Team",
-                List.of("&7Use &d/team create <name>")
+                core.getMessage("teams.gui.create-team-title"),
+                List.of(core.getMessage("teams.gui.create-team-lore-1"))
         ));
 
         inventory.setItem(13, item(
                 Material.BARRIER,
-                "&7No Team",
-                List.of("&fYou are not in a team")
+                core.getMessage("teams.gui.no-team-item-title"),
+                List.of(core.getMessage("teams.gui.no-team-item-lore-1"))
         ));
 
         inventory.setItem(15, item(
                 hasInvite ? Material.LIME_DYE : Material.GRAY_DYE,
-                hasInvite ? "&aPending Invite" : "&7No Pending Invite",
-                hasInvite ? List.of("&7Use &d/team accept", "&7or &d/team deny")
-                        : List.of("&7No team invite waiting")
+                hasInvite ? core.getMessage("teams.gui.pending-invite-title") : core.getMessage("teams.gui.no-pending-invite-title"),
+                List.of(hasInvite ? core.getMessage("teams.gui.pending-invite-lore-1") : core.getMessage("teams.gui.no-pending-invite-lore-1"))
         ));
 
         player.openInventory(inventory);
     }
 
-    private static void openTeamMenu(Player player, TeamService teamService, TeamRecord team) {
-        Inventory inventory = Bukkit.createInventory(null, 54, TEAM_TITLE);
+    private static void openTeamMenu(Core core, Player player, TeamService teamService, TeamRecord team) {
+        TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
+        int page = TeamGuiSession.getPage(player.getUniqueId());
+        String search = TeamGuiSession.getMemberSearch(player.getUniqueId()).toLowerCase(Locale.ROOT);
+
+        List<UUID> sortedMembers = teamService.getSortedTeamMembers(team.teamId(), sortType);
+        List<UUID> filteredMembers = new ArrayList<>();
+
+        for (UUID memberId : sortedMembers) {
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
+            String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
+
+            if (!search.isBlank() && !name.toLowerCase(Locale.ROOT).contains(search)) {
+                continue;
+            }
+
+            filteredMembers.add(memberId);
+        }
+
+        Inventory inventory = Bukkit.createInventory(
+                null,
+                54,
+                TEAM_TITLE(core) + ChatColor.GRAY + " (" + (page + 1) + ")"
+        );
+
+        int startIndex = page * 45;
+        int endIndex = Math.min(startIndex + 45, filteredMembers.size());
+
+        int guiSlot = 0;
+        for (int i = startIndex; i < endIndex; i++) {
+            UUID memberId = filteredMembers.get(i);
+            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
+            String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
+            String role = prettyRole(teamService.getMember(memberId).role());
+
+            inventory.setItem(guiSlot, item(
+                    Material.PLAYER_HEAD,
+                    "&f" + name,
+                    List.of(
+                            core.getMessage("teams.gui.member-head-lore-1").replace("%role%", role),
+                            core.getMessage("teams.gui.member-head-lore-2")
+                    )
+            ));
+            guiSlot++;
+        }
 
         inventory.setItem(45, item(
-                Material.WHITE_BANNER,
-                "&dTeam Home",
-                List.of("&7Click to teleport")
+                Material.OAK_SIGN,
+                core.getMessage("teams.gui.search-title"),
+                search.isBlank()
+                        ? List.of(core.getMessage("teams.gui.search-lore-1"))
+                        : List.of(core.getMessage("teams.gui.search-lore-current").replace("%search%", search))
         ));
 
         inventory.setItem(46, item(
-                team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER,
-                "&dFriendly Fire",
-                List.of(team.friendlyFire() ? "&cEnabled" : "&aDisabled")
+                Material.HOPPER,
+                core.getMessage("teams.gui.sort-title"),
+                List.of(
+                        core.getMessage("teams.gui.sort-lore-1").replace("%sort%", sortType.displayName()),
+                        core.getMessage("teams.gui.sort-lore-2")
+                )
         ));
 
         inventory.setItem(47, item(
                 Material.PLAYER_HEAD,
-                "&dInvite Player",
-                List.of("&7Use &d/team invite <player>")
+                core.getMessage("teams.gui.invite-player-title-button"),
+                List.of(core.getMessage("teams.gui.invite-player-lore-1"))
         ));
 
-        if (teamService.isFounder(player.getUniqueId())) {
-            inventory.setItem(51, item(
-                    Material.TNT,
-                    "&cDisband Team",
-                    List.of("&7Click to disband team")
-            ));
+        inventory.setItem(48, item(
+                Material.ARROW,
+                core.getMessage("teams.gui.back-title"),
+                List.of(core.getMessage("teams.gui.back-lore-1"))
+        ));
 
-            inventory.setItem(53, item(
-                    Material.PURPLE_DYE,
-                    "&cDelete Team Home",
-                    List.of("&7Click to delete team home")
-            ));
-        } else {
-            inventory.setItem(51, item(
-                    Material.RED_STAINED_GLASS_PANE,
-                    "&cLeave Team",
-                    List.of("&7Click to leave team")
-            ));
+        String leaderName = Bukkit.getOfflinePlayer(team.founder()).getName();
+        if (leaderName == null) {
+            leaderName = team.founder().toString();
         }
 
-        int slot = 0;
-        for (UUID memberId : teamService.getTeamMembers(team.teamId())) {
-            if (slot >= 45) {
-                break;
-            }
+        inventory.setItem(49, item(
+                Material.IRON_HELMET,
+                core.getMessage("teams.gui.team-info-title"),
+                List.of(
+                        core.getMessage("teams.gui.team-info-lore-1").replace("%team%", team.name()),
+                        core.getMessage("teams.gui.team-info-lore-2").replace("%leader%", leaderName),
+                        core.getMessage("teams.gui.team-info-lore-3").replace("%members%", String.valueOf(filteredMembers.size()))
+                )
+        ));
 
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
-            String role = teamService.getMember(memberId).role().name();
+        inventory.setItem(50, item(
+                Material.ARROW,
+                core.getMessage("teams.gui.next-title"),
+                List.of(core.getMessage("teams.gui.next-lore-1"))
+        ));
 
-            inventory.setItem(slot, item(
-                    Material.PLAYER_HEAD,
-                    "&f" + (offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName()),
-                    List.of("&7Role: &d" + prettyRole(role))
-            ));
+        inventory.setItem(51, item(
+                teamService.isFounder(player.getUniqueId()) ? Material.TNT : Material.RED_STAINED_GLASS_PANE,
+                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.disband-title") : core.getMessage("teams.gui.leave-title"),
+                List.of(teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.disband-lore-1") : core.getMessage("teams.gui.leave-lore-1"))
+        ));
 
-            slot++;
-        }
+        inventory.setItem(52, item(
+                Material.WHITE_BANNER,
+                core.getMessage("teams.gui.team-home-title"),
+                List.of(core.getMessage("teams.gui.team-home-lore-1"))
+        ));
+
+        inventory.setItem(53, item(
+                teamService.isFounder(player.getUniqueId()) ? Material.PURPLE_DYE : (team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER),
+                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.delete-team-home-title") : core.getMessage("teams.gui.friendly-fire-title"),
+                teamService.isFounder(player.getUniqueId())
+                        ? List.of(core.getMessage("teams.gui.delete-team-home-lore-1"))
+                        : List.of(
+                                team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
+                                core.getMessage("teams.gui.friendly-fire-lore-2")
+                        )
+        ));
 
         player.openInventory(inventory);
     }
 
-    private static String prettyRole(String raw) {
-        return switch (raw) {
-            case "FOUNDER" -> "Founder";
-            case "ADMIN" -> "Admin";
-            default -> "Member";
+    private static String prettyRole(net.mineacle.core.teams.model.TeamRole role) {
+        return switch (role) {
+            case FOUNDER -> "Founder";
+            case ADMIN -> "Admin";
+            case MEMBER -> "Member";
         };
     }
 
     private static ItemStack item(Material material, String name, List<String> lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
-        meta.setLore(lore.stream().map(line -> ChatColor.translateAlternateColorCodes('&', line)).toList());
+        meta.setDisplayName(color(name));
+        meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         item.setItemMeta(meta);
         return item;
+    }
+
+    private static String color(String input) {
+        return ChatColor.translateAlternateColorCodes('&', input);
     }
 }
