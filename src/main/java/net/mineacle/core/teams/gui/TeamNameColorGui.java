@@ -34,34 +34,47 @@ public final class TeamNameColorGui {
         Inventory inventory = Bukkit.createInventory(null, 27, TITLE(core));
 
         int[] slots = {10, 11, 12, 13, 14, 15, 16, 20, 24};
+
         for (int i = 0; i < COLORS.length; i++) {
-            TeamNameColor color = COLORS[i];
-            inventory.setItem(slots[i], item(color.material(), color.colorCode() + color.displayName()));
+            TeamNameColor nameColor = COLORS[i];
+            inventory.setItem(slots[i], item(
+                    nameColor.material(),
+                    nameColor.colorCode() + nameColor.displayName(),
+                    "&7Click to set your team's name color."
+            ));
         }
 
-        inventory.setItem(18, item(org.bukkit.Material.ARROW, core.getMessage("teams.gui.back-menu-title")));
         player.openInventory(inventory);
     }
 
     public static TeamNameColor fromSlot(int slot) {
         int[] slots = {10, 11, 12, 13, 14, 15, 16, 20, 24};
+
         for (int i = 0; i < slots.length; i++) {
             if (slots[i] == slot) {
                 return COLORS[i];
             }
         }
+
         return null;
     }
 
-    private static ItemStack item(org.bukkit.Material material, String name) {
+    private static ItemStack item(org.bukkit.Material material, String name, String lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
+
         meta.setDisplayName(color(name));
+        meta.setLore(java.util.List.of(color(lore)));
+
         item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input);
+        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
     }
 }

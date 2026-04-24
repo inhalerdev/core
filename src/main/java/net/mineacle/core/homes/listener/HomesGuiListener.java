@@ -1,6 +1,7 @@
 package net.mineacle.core.homes.listener;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.gui.ConfirmDeleteHomeGui;
 import net.mineacle.core.homes.gui.HomesMainGui;
@@ -180,8 +181,7 @@ public final class HomesGuiListener implements Listener {
 
         if (team == null) {
             player.closeInventory();
-            player.sendMessage("§cYou are not in a team.");
-            player.sendMessage("§7Type §d/team create <name> §7to create a team.");
+            sendCreateTeamPrompt(player);
             return;
         }
 
@@ -191,6 +191,7 @@ public final class HomesGuiListener implements Listener {
 
         if (!hasHome) {
             if (!isAdmin) {
+                player.closeInventory();
                 player.sendMessage("§7Ask your §dteam owner §7to set Team Home");
                 return;
             }
@@ -377,5 +378,14 @@ public final class HomesGuiListener implements Listener {
         player.sendMessage(" ");
         player.sendMessage(core.getMessage("homes.upgrade-line-2"));
         player.sendMessage(" ");
+    }
+
+    private void sendCreateTeamPrompt(Player player) {
+        player.sendMessage("§cYou are not in a team.");
+
+        Component clickable = Component.text("§7Type §d/team create <name> §7to create a team.")
+                .clickEvent(ClickEvent.suggestCommand("/team create "));
+
+        player.sendMessage(clickable);
     }
 }

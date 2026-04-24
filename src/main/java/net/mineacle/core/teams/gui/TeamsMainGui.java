@@ -1,7 +1,9 @@
 package net.mineacle.core.teams.gui;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
+import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.model.TeamSortType;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
@@ -13,6 +15,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,6 +23,8 @@ import java.util.Locale;
 import java.util.UUID;
 
 public final class TeamsMainGui {
+
+    public static final int TEAM_SIZE_LIMIT = 27;
 
     public static String NO_TEAM_TITLE(Core core) {
         return color(core.getMessage("teams.gui.no-team-title"));
@@ -49,19 +54,26 @@ public final class TeamsMainGui {
         inventory.setItem(11, item(
                 Material.NAME_TAG,
                 core.getMessage("teams.gui.create-team-title"),
-                List.of(core.getMessage("teams.gui.create-team-lore-1"))
+                List.of(
+                        "&7Type &d/team create <name>",
+                        "&7to create a team."
+                )
         ));
 
         inventory.setItem(13, item(
                 Material.BARRIER,
                 core.getMessage("teams.gui.no-team-item-title"),
-                List.of(core.getMessage("teams.gui.no-team-item-lore-1"))
+                List.of(
+                        "&fYou are not in a team.",
+                        "&7Type &d/team create <name>",
+                        "&7to get started."
+                )
         ));
 
         inventory.setItem(15, item(
                 hasInvite ? Material.LIME_DYE : Material.GRAY_DYE,
                 hasInvite ? core.getMessage("teams.gui.pending-invite-title") : core.getMessage("teams.gui.no-pending-invite-title"),
-                List.of(hasInvite ? core.getMessage("teams.gui.pending-invite-lore-1") : core.getMessage("teams.gui.no-pending-invite-lore-1"))
+                List.of(hasInvite ? "&7Click to view team invites." : "&7You have no current team invites.")
         ));
 
         player.openInventory(inventory);
@@ -86,11 +98,10 @@ public final class TeamsMainGui {
             filteredMembers.add(memberId);
         }
 
-        Inventory inventory = Bukkit.createInventory(
-                null,
-                54,
-                TEAM_TITLE(core) + ChatColor.GRAY + " (" + (page + 1) + ")"
-        );
+        int memberCount = teamService.getTeamMembers(team.teamId()).size();
+        String title = teamService.formatTeamName(team) + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
+
+        Inventory inventory = Bukkit.createInventory(null, 54, title);
 
         int startIndex = page * 45;
         int endIndex = Math.min(startIndex + 45, filteredMembers.size());
@@ -100,40 +111,37 @@ public final class TeamsMainGui {
             UUID memberId = filteredMembers.get(i);
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
             String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
-            String role = prettyRole(teamService.getMember(memberId).role());
 
-            inventory.setItem(guiSlot, item(
-                    Material.PLAYER_HEAD,
+            TeamMemberRecord member = teamService.getMember(memberId);
+            String role = member == null ? "Member" : prettyRole(member.role());
+
+            inventory.setItem(guiSlot, playerHead(
+                    offlinePlayer,
                     "&f" + name,
                     List.of(
-                            core.getMessage("teams.gui.member-head-lore-1").replace("%role%", role),
-                            core.getMessage("teams.gui.member-head-lore-2")
+                            "&7Role: &d" + role,
+                            "&7Click to view player stats / manage."
                     )
             ));
+
             guiSlot++;
         }
 
-        inventory.setItem(45, item(
-                Material.OAK_SIGN,
-                core.getMessage("teams.gui.search-title"),
-                search.isBlank()
-                        ? List.of(core.getMessage("teams.gui.search-lore-1"))
-                        : List.of(core.getMessage("teams.gui.search-lore-current").replace("%search%", search))
-        ));
+        if (memberCount < TEAM_SIZE_LIMIT && guiSlot < 45 && page == 0) {
+            inventory.setItem(guiSlot, item(
+                    Material.LIME_STAINED_GLASS_PANE,
+                    "&aInvite Player",
+                    List.of(
+                            "&7Click to invite a player.",
+                            "&7This will autofill &d/team invite &7in chat."
+                    )
+            ));
+        }
 
         inventory.setItem(46, item(
                 Material.HOPPER,
                 core.getMessage("teams.gui.sort-title"),
-                List.of(
-                        core.getMessage("teams.gui.sort-lore-1").replace("%sort%", sortType.displayName()),
-                        core.getMessage("teams.gui.sort-lore-2")
-                )
-        ));
-
-        inventory.setItem(47, item(
-                Material.PLAYER_HEAD,
-                core.getMessage("teams.gui.invite-player-title-button"),
-                List.of(core.getMessage("teams.gui.invite-player-lore-1"))
+                sortLore(sortType)
         ));
 
         inventory.setItem(48, item(
@@ -148,12 +156,13 @@ public final class TeamsMainGui {
         }
 
         inventory.setItem(49, item(
-                Material.IRON_HELMET,
+                team.bannerColor().bannerMaterial(),
                 core.getMessage("teams.gui.team-info-title"),
                 List.of(
-                        core.getMessage("teams.gui.team-info-lore-1").replace("%team%", teamService.formatTeamName(team)),
-                        core.getMessage("teams.gui.team-info-lore-2").replace("%leader%", leaderName),
-                        core.getMessage("teams.gui.team-info-lore-3").replace("%members%", String.valueOf(filteredMembers.size()))
+                        "&fTeam: " + teamService.formatTeamName(team),
+                        "&fLeader: &d" + leaderName,
+                        "&fMembers: &d" + memberCount + "&7/" + TEAM_SIZE_LIMIT,
+                        "&fSort: &d" + sortType.displayName()
                 )
         ));
 
@@ -181,15 +190,31 @@ public final class TeamsMainGui {
                 teamService.isFounder(player.getUniqueId())
                         ? List.of(core.getMessage("teams.gui.bans-button-lore-1"))
                         : List.of(
-                                team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
-                                core.getMessage("teams.gui.friendly-fire-lore-2")
-                        )
+                        team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
+                        core.getMessage("teams.gui.friendly-fire-lore-2")
+                )
         ));
 
         player.openInventory(inventory);
     }
 
-    private static String prettyRole(net.mineacle.core.teams.model.TeamRole role) {
+    private static List<String> sortLore(TeamSortType current) {
+        List<String> lore = new ArrayList<>();
+        lore.add("&7Click to cycle sorting.");
+        lore.add("");
+
+        for (TeamSortType type : TeamSortType.values()) {
+            if (type == current) {
+                lore.add("&d▶ " + type.displayName());
+            } else {
+                lore.add("&8• " + type.displayName());
+            }
+        }
+
+        return lore;
+    }
+
+    private static String prettyRole(TeamRole role) {
         return switch (role) {
             case FOUNDER -> "Founder";
             case ADMIN -> "Admin";
@@ -197,16 +222,38 @@ public final class TeamsMainGui {
         };
     }
 
-    private static ItemStack item(Material material, String name, List<String> lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
+    private static ItemStack playerHead(OfflinePlayer owner, String name, List<String> lore) {
+        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
+        ItemMeta rawMeta = item.getItemMeta();
+
+        if (!(rawMeta instanceof SkullMeta meta)) {
+            return item;
+        }
+
+        meta.setOwningPlayer(owner);
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         item.setItemMeta(meta);
+
+        return item;
+    }
+
+    private static ItemStack item(Material material, String name, List<String> lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
+
+        meta.setDisplayName(color(name));
+        meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
+        item.setItemMeta(meta);
+
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input);
+        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
     }
 }

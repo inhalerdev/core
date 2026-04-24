@@ -96,9 +96,21 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (title.startsWith(cleanTitle(TeamsMainGui.TEAM_TITLE(core)))) {
+        if (title.equals("team manage") || title.equals(cleanTitle(TeamManageGui.TITLE(core)))) {
             event.setCancelled(true);
-            handleMainTeamClick(player, slot);
+            handleManageGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals("banner color") || title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))) {
+            event.setCancelled(true);
+            handleBannerColorGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals("name color") || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
+            event.setCancelled(true);
+            handleNameColorGuiClick(player, slot);
             return;
         }
 
@@ -111,24 +123,6 @@ public final class TeamsGuiListener implements Listener {
         if (title.equals(cleanTitle(TeamBansGui.TITLE(core)))) {
             event.setCancelled(true);
             handleBansGuiClick(player, slot);
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamManageGui.TITLE(core)))) {
-            event.setCancelled(true);
-            handleManageGuiClick(player, slot);
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))) {
-            event.setCancelled(true);
-            handleBannerColorGuiClick(player, slot);
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
-            event.setCancelled(true);
-            handleNameColorGuiClick(player, slot);
             return;
         }
 
@@ -145,47 +139,12 @@ public final class TeamsGuiListener implements Listener {
                 || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
             event.setCancelled(true);
             handleConfirmClick(player, slot);
-        }
-    }
-
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
             return;
         }
 
-        UUID uuid = player.getUniqueId();
-
-        if (navigating.remove(uuid)) {
-            return;
-        }
-
-        String title = cleanTitle(event.getView().getTitle());
-
-        if (title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
-            Bukkit.getScheduler().runTask(core, () -> {
-                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null && teamService.isAdmin(uuid)) {
-                    TeamManageGui.open(core, player, teamService);
-                }
-            });
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamManageGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamBansGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamInviteGui.TITLE(core)))
-                || title.equals(cleanTitle(core.getMessage("teams.gui.member-manager-title")))
-                || title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
-            Bukkit.getScheduler().runTask(core, () -> {
-                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null) {
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                }
-            });
+        if (title.startsWith(cleanTitle(TeamsMainGui.TEAM_TITLE(core)))) {
+            event.setCancelled(true);
+            handleMainTeamClick(player, slot);
         }
     }
 
@@ -195,7 +154,16 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 11 || slot == 13 || slot == 15) {
+        if (slot == 15) {
+            player.closeInventory();
+
+            String message = "§cYou have no current team invites.";
+            player.sendActionBar(Component.text(message));
+            player.sendMessage(message);
+            return;
+        }
+
+        if (slot == 11 || slot == 13) {
             player.closeInventory();
             Bukkit.getScheduler().runTaskLater(core, () -> sendCreateTeamPrompt(player), 1L);
         }
@@ -348,21 +316,22 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        switch (slot) {
-            case 10 -> navigate(player, () -> TeamBannerColorGui.open(core, player));
-            case 12 -> navigate(player, () -> TeamNameColorGui.open(core, player));
-            case 22 -> navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
-            default -> {
-            }
+        if (slot == 10) {
+            navigate(player, () -> TeamBannerColorGui.open(core, player));
+            return;
+        }
+
+        if (slot == 12) {
+            navigate(player, () -> TeamNameColorGui.open(core, player));
+            return;
+        }
+
+        if (slot == 16) {
+            TeamManageGui.open(core, player, teamService);
         }
     }
 
     private void handleBannerColorGuiClick(Player player, int slot) {
-        if (slot == 18) {
-            navigate(player, () -> TeamManageGui.open(core, player, teamService));
-            return;
-        }
-
         TeamBannerColor color = TeamBannerColorGui.fromSlot(slot);
         if (color == null) {
             return;
@@ -386,11 +355,6 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private void handleNameColorGuiClick(Player player, int slot) {
-        if (slot == 18) {
-            navigate(player, () -> TeamManageGui.open(core, player, teamService));
-            return;
-        }
-
         TeamNameColor color = TeamNameColorGui.fromSlot(slot);
         if (color == null) {
             return;
@@ -709,11 +673,9 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private void sendCreateTeamPrompt(Player player) {
-        player.sendMessage("§7Type §d/team create <name> §7to create a team.");
-        player.sendMessage("§7Click the line below to autofill it.");
-        player.sendMessage(" ");
+        player.sendMessage("§cYou are not in a team.");
 
-        Component clickable = Component.text("§d[CLICK HERE] §7/team create ")
+        Component clickable = Component.text("§7Type §d/team create <name> §7to create a team.")
                 .clickEvent(ClickEvent.suggestCommand("/team create "));
 
         player.sendMessage(clickable);

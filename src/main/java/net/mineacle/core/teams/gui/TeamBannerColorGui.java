@@ -9,8 +9,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.util.List;
-
 public final class TeamBannerColorGui {
 
     public static String TITLE(Core core) {
@@ -41,34 +39,47 @@ public final class TeamBannerColorGui {
         Inventory inventory = Bukkit.createInventory(null, 27, TITLE(core));
 
         int[] slots = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25};
+
         for (int i = 0; i < COLORS.length; i++) {
-            TeamBannerColor color = COLORS[i];
-            inventory.setItem(slots[i], item(color.bannerMaterial(), "&f" + color.displayName()));
+            TeamBannerColor bannerColor = COLORS[i];
+            inventory.setItem(slots[i], item(
+                    bannerColor.bannerMaterial(),
+                    "&f" + bannerColor.displayName(),
+                    "&7Click to set your team's banner color."
+            ));
         }
 
-        inventory.setItem(18, item(org.bukkit.Material.ARROW, core.getMessage("teams.gui.back-menu-title")));
         player.openInventory(inventory);
     }
 
     public static TeamBannerColor fromSlot(int slot) {
         int[] slots = {10, 11, 12, 13, 14, 15, 16, 19, 20, 21, 22, 23, 24, 25};
+
         for (int i = 0; i < slots.length; i++) {
             if (slots[i] == slot) {
                 return COLORS[i];
             }
         }
+
         return null;
     }
 
-    private static ItemStack item(org.bukkit.Material material, String name) {
+    private static ItemStack item(org.bukkit.Material material, String name, String lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
+
         meta.setDisplayName(color(name));
+        meta.setLore(java.util.List.of(color(lore)));
+
         item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input);
+        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
     }
 }
