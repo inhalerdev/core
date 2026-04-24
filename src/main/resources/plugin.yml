@@ -50,3 +50,6 @@ permissions:
 
   mineacleteams.admin:
     default: op
+
+  mineacle.discord.linked:
+    default: false

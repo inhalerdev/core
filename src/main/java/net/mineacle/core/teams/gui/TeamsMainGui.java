@@ -137,9 +137,9 @@ public final class TeamsMainGui {
         ));
 
         inventory.setItem(48, item(
-                Material.ARROW,
-                core.getMessage("teams.gui.back-title"),
-                List.of(core.getMessage("teams.gui.back-lore-1"))
+                Material.NAME_TAG,
+                core.getMessage("teams.gui.manage-button-title"),
+                List.of(core.getMessage("teams.gui.manage-button-lore-1"))
         ));
 
         String leaderName = Bukkit.getOfflinePlayer(team.founder()).getName();
@@ -151,7 +151,7 @@ public final class TeamsMainGui {
                 Material.IRON_HELMET,
                 core.getMessage("teams.gui.team-info-title"),
                 List.of(
-                        core.getMessage("teams.gui.team-info-lore-1").replace("%team%", team.name()),
+                        core.getMessage("teams.gui.team-info-lore-1").replace("%team%", teamService.formatTeamName(team)),
                         core.getMessage("teams.gui.team-info-lore-2").replace("%leader%", leaderName),
                         core.getMessage("teams.gui.team-info-lore-3").replace("%members%", String.valueOf(filteredMembers.size()))
                 )
@@ -170,7 +170,7 @@ public final class TeamsMainGui {
         ));
 
         inventory.setItem(52, item(
-                Material.WHITE_BANNER,
+                team.bannerColor().bannerMaterial(),
                 core.getMessage("teams.gui.team-home-title"),
                 List.of(core.getMessage("teams.gui.team-home-lore-1"))
         ));

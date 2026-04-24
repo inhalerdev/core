@@ -43,8 +43,9 @@ public final class TeamInviteGui {
         TeamRecord team = teamService.getTeamById(invite.teamId());
         OfflinePlayer inviter = Bukkit.getOfflinePlayer(invite.inviterId());
 
-        String teamName = team == null ? "Unknown Team" : team.name();
+        String teamName = team == null ? "Unknown Team" : teamService.formatTeamName(team);
         String inviterName = inviter.getName() == null ? invite.inviterId().toString() : inviter.getName();
+        Material bannerMaterial = team == null ? Material.PURPLE_BANNER : team.bannerColor().bannerMaterial();
 
         inventory.setItem(11, item(
                 Material.LIME_STAINED_GLASS_PANE,
@@ -57,7 +58,7 @@ public final class TeamInviteGui {
         ));
 
         inventory.setItem(13, item(
-                Material.NAME_TAG,
+                bannerMaterial,
                 core.getMessage("teams.gui.invite-center-title").replace("%team%", teamName),
                 List.of(core.getMessage("teams.gui.invite-center-lore-1").replace("%inviter%", inviterName))
         ));

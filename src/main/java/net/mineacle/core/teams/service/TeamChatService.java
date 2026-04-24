@@ -49,6 +49,7 @@ public final class TeamChatService {
         String formatted = ChatColor.translateAlternateColorCodes(
                 '&',
                 core.getMessage("teams.chat.format")
+                        .replace("%team%", teamService.formatTeamName(team))
                         .replace("%player%", sender.getName())
                         .replace("%message%", message)
         );

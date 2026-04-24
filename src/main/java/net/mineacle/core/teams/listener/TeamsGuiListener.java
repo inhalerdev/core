@@ -4,14 +4,19 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.teams.gui.TeamBannerColorGui;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInviteGui;
+import net.mineacle.core.teams.gui.TeamManageGui;
 import net.mineacle.core.teams.gui.TeamMemberManageGui;
+import net.mineacle.core.teams.gui.TeamNameColorGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamBanRecord;
+import net.mineacle.core.teams.model.TeamBannerColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
+import net.mineacle.core.teams.model.TeamNameColor;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.model.TeamSortType;
@@ -25,12 +30,15 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class TeamsGuiListener implements Listener {
 
@@ -45,6 +53,8 @@ public final class TeamsGuiListener implements Listener {
     private final TeamHomeService teamHomeService;
     private final TeleportService teleportService;
     private final TeamSignService teamSignService;
+
+    private final Set<UUID> navigating = ConcurrentHashMap.newKeySet();
 
     public TeamsGuiListener(
             Core core,
@@ -70,6 +80,10 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
+        if (event.getClickedInventory() == null) {
+            return;
+        }
+
         String title = event.getView().getTitle();
         int slot = event.getRawSlot();
 
@@ -82,14 +96,14 @@ public final class TeamsGuiListener implements Listener {
         if (title.equals(TeamsMainGui.NO_TEAM_TITLE(core))) {
             event.setCancelled(true);
 
-            if (slot == 11) {
+            if (slot == 11 || slot == 13) {
                 player.closeInventory();
                 sendCreateTeamPrompt(player);
                 return;
             }
 
             if (slot == 15) {
-                TeamInviteGui.open(core, player, inviteService, teamService);
+                navigate(player, () -> TeamInviteGui.open(core, player, inviteService, teamService));
             }
 
             return;
@@ -104,6 +118,24 @@ public final class TeamsGuiListener implements Listener {
         if (title.equals(TeamBansGui.TITLE(core))) {
             event.setCancelled(true);
             handleBansGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals(TeamManageGui.TITLE(core))) {
+            event.setCancelled(true);
+            handleManageGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals(TeamBannerColorGui.TITLE(core))) {
+            event.setCancelled(true);
+            handleBannerColorGuiClick(player, slot);
+            return;
+        }
+
+        if (title.equals(TeamNameColorGui.TITLE(core))) {
+            event.setCancelled(true);
+            handleNameColorGuiClick(player, slot);
             return;
         }
 
@@ -123,6 +155,56 @@ public final class TeamsGuiListener implements Listener {
         }
     }
 
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        if (navigating.remove(player.getUniqueId())) {
+            return;
+        }
+
+        String title = event.getView().getTitle();
+
+        if (title.equals(TeamBannerColorGui.TITLE(core)) || title.equals(TeamNameColorGui.TITLE(core))) {
+            Bukkit.getScheduler().runTask(core, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+
+                TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+                if (team != null && teamService.isAdmin(player.getUniqueId())) {
+                    TeamManageGui.open(core, player, teamService);
+                }
+            });
+            return;
+        }
+
+        if (title.equals(TeamManageGui.TITLE(core))
+                || title.equals(TeamBansGui.TITLE(core))
+                || title.equals(org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("teams.gui.member-manager-title")))
+                || title.equals(TeamInviteGui.TITLE(core))
+                || title.equals(TeamConfirmGui.LEAVE_TITLE)
+                || title.equals(TeamConfirmGui.DISBAND_TITLE)
+                || title.equals(TeamConfirmGui.DELETE_HOME_TITLE)
+                || title.equals(TeamConfirmGui.KICK_TITLE)
+                || title.equals(TeamConfirmGui.TRANSFER_TITLE)) {
+            Bukkit.getScheduler().runTask(core, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+
+                TeamsMainGui.open(core, player, teamService, inviteService);
+            });
+        }
+    }
+
+    private void navigate(Player player, Runnable openAction) {
+        navigating.add(player.getUniqueId());
+        openAction.run();
+    }
+
     private void handleMainTeamClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
@@ -135,6 +217,7 @@ public final class TeamsGuiListener implements Listener {
 
         List<UUID> allMembers = teamService.getSortedTeamMembers(team.teamId(), sortType);
         List<UUID> filteredMembers = new ArrayList<>();
+
         for (UUID memberId : allMembers) {
             String name = Bukkit.getOfflinePlayer(memberId).getName();
             String compare = name == null ? memberId.toString() : name;
@@ -157,7 +240,7 @@ public final class TeamsGuiListener implements Listener {
 
             UUID targetId = filteredMembers.get(index);
             player.setMetadata(META_MANAGE_TARGET, new FixedMetadataValue(core, targetId.toString()));
-            TeamMemberManageGui.open(player, targetId, teamService);
+            navigate(player, () -> TeamMemberManageGui.open(player, targetId, teamService));
             return;
         }
 
@@ -166,49 +249,61 @@ public final class TeamsGuiListener implements Listener {
                 player.closeInventory();
                 teamSignService.openSearchSign(player);
             }
+
             case 46 -> {
                 TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
                 TeamGuiSession.setSort(player.getUniqueId(), next);
                 TeamGuiSession.setPage(player.getUniqueId(), 0);
                 TeamsMainGui.open(core, player, teamService, inviteService);
             }
+
             case 47 -> {
                 if (!teamService.isAdmin(player.getUniqueId())) {
                     player.sendMessage(core.getMessage("teams.invite.no-permission"));
                     return;
                 }
+
                 player.closeInventory();
                 teamSignService.openInviteSign(player);
             }
+
             case 48 -> {
-                int current = TeamGuiSession.getPage(player.getUniqueId());
-                if (current > 0) {
-                    TeamGuiSession.setPage(player.getUniqueId(), current - 1);
+                if (!teamService.isAdmin(player.getUniqueId())) {
+                    player.sendMessage(core.getMessage("teams.management.no-permission"));
+                    return;
                 }
-                TeamsMainGui.open(core, player, teamService, inviteService);
+
+                navigate(player, () -> TeamManageGui.open(core, player, teamService));
             }
+
             case 49 -> TeamsMainGui.open(core, player, teamService, inviteService);
+
             case 50 -> {
                 int current = TeamGuiSession.getPage(player.getUniqueId());
                 int maxPage = Math.max(0, (filteredMembers.size() - 1) / 45);
+
                 if (current < maxPage) {
                     TeamGuiSession.setPage(player.getUniqueId(), current + 1);
                 }
+
                 TeamsMainGui.open(core, player, teamService, inviteService);
             }
+
             case 51 -> {
                 if (teamService.isFounder(player.getUniqueId())) {
                     player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "DISBAND:" + team.teamId()));
                     player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    TeamConfirmGui.openDisband(player, team.name());
+                    navigate(player, () -> TeamConfirmGui.openDisband(player, team.name()));
                 } else {
                     player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "LEAVE:" + team.teamId()));
                     player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    TeamConfirmGui.openLeave(player, team.name());
+                    navigate(player, () -> TeamConfirmGui.openLeave(player, team.name()));
                 }
             }
+
             case 52 -> {
                 org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
+
                 if (home == null) {
                     if (!teamService.isAdmin(player.getUniqueId())) {
                         player.sendMessage(core.getMessage("teams.home.no-home"));
@@ -227,9 +322,10 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.home.teleported"));
                 });
             }
+
             case 53 -> {
                 if (teamService.isFounder(player.getUniqueId())) {
-                    TeamBansGui.open(core, player, team.teamId(), banService, teamService);
+                    navigate(player, () -> TeamBansGui.open(core, player, team.teamId(), banService, teamService));
                     return;
                 }
 
@@ -243,9 +339,82 @@ public final class TeamsGuiListener implements Listener {
                 player.sendMessage(newValue ? core.getMessage("teams.pvp.enabled") : core.getMessage("teams.pvp.disabled"));
                 TeamsMainGui.open(core, player, teamService, inviteService);
             }
+
             default -> {
             }
         }
+    }
+
+    private void handleManageGuiClick(Player player, int slot) {
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.closeInventory();
+            player.sendMessage(core.getMessage("teams.management.no-permission"));
+            return;
+        }
+
+        switch (slot) {
+            case 10 -> navigate(player, () -> TeamBannerColorGui.open(core, player));
+            case 12 -> navigate(player, () -> TeamNameColorGui.open(core, player));
+            case 22 -> navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+            default -> {
+            }
+        }
+    }
+
+    private void handleBannerColorGuiClick(Player player, int slot) {
+        if (slot == 18) {
+            navigate(player, () -> TeamManageGui.open(core, player, teamService));
+            return;
+        }
+
+        TeamBannerColor color = TeamBannerColorGui.fromSlot(slot);
+        if (color == null) {
+            return;
+        }
+
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.closeInventory();
+            return;
+        }
+
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.closeInventory();
+            player.sendMessage(core.getMessage("teams.management.no-permission"));
+            return;
+        }
+
+        teamService.setBannerColor(team.teamId(), color);
+        player.sendMessage(core.getMessage("teams.management.banner-updated"));
+        navigate(player, () -> TeamManageGui.open(core, player, teamService));
+    }
+
+    private void handleNameColorGuiClick(Player player, int slot) {
+        if (slot == 18) {
+            navigate(player, () -> TeamManageGui.open(core, player, teamService));
+            return;
+        }
+
+        TeamNameColor color = TeamNameColorGui.fromSlot(slot);
+        if (color == null) {
+            return;
+        }
+
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.closeInventory();
+            return;
+        }
+
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.closeInventory();
+            player.sendMessage(core.getMessage("teams.management.no-permission"));
+            return;
+        }
+
+        teamService.setNameColor(team.teamId(), color.colorCode());
+        player.sendMessage(core.getMessage("teams.management.name-color-updated"));
+        navigate(player, () -> TeamManageGui.open(core, player, teamService));
     }
 
     private void handleInviteGuiClick(Player player, int slot) {
@@ -256,7 +425,7 @@ public final class TeamsGuiListener implements Listener {
             }
 
             player.sendMessage("§7Joined the team.");
-            TeamsMainGui.open(core, player, teamService, inviteService);
+            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             return;
         }
 
@@ -267,19 +436,20 @@ public final class TeamsGuiListener implements Listener {
             }
 
             player.sendMessage(core.getMessage("teams.invite.denied"));
-            TeamsMainGui.open(core, player, teamService, inviteService);
+            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
         }
     }
 
     private void handleBansGuiClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
         if (team == null) {
             player.closeInventory();
             return;
         }
 
         if (slot == 49) {
-            TeamsMainGui.open(core, player, teamService, inviteService);
+            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             return;
         }
 
@@ -288,6 +458,7 @@ public final class TeamsGuiListener implements Listener {
         }
 
         List<TeamBanRecord> bans = banService.getActiveBans(team.teamId());
+
         if (slot >= bans.size()) {
             return;
         }
@@ -315,6 +486,7 @@ public final class TeamsGuiListener implements Listener {
 
         TeamMemberRecord viewerMember = teamService.getMember(player.getUniqueId());
         TeamMemberRecord targetMember = teamService.getMember(targetId);
+
         if (viewerMember == null || targetMember == null) {
             player.closeInventory();
             return;
@@ -326,39 +498,41 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.promote-founder-only"));
                     return;
                 }
+
                 if (targetMember.role() == TeamRole.MEMBER) {
                     teamService.setMemberRole(targetId, TeamRole.ADMIN);
                     player.sendMessage(core.getMessage("teams.management.promoted"));
                     TeamMemberManageGui.open(player, targetId, teamService);
                 }
             }
+
             case 12 -> {
                 if (viewerMember.role() != TeamRole.FOUNDER) {
                     player.sendMessage(core.getMessage("teams.management.demote-founder-only"));
                     return;
                 }
+
                 if (targetMember.role() == TeamRole.ADMIN) {
                     teamService.setMemberRole(targetId, TeamRole.MEMBER);
                     player.sendMessage(core.getMessage("teams.management.demoted"));
                     TeamMemberManageGui.open(player, targetId, teamService);
                 }
             }
+
             case 14 -> {
                 if (targetId.equals(player.getUniqueId())) {
                     player.sendMessage(core.getMessage("teams.management.cannot-kick-self"));
                     return;
                 }
 
-                String targetName = Bukkit.getOfflinePlayer(targetId).getName();
-                if (targetName == null) {
-                    targetName = targetId.toString();
-                }
+                String rawTargetName = Bukkit.getOfflinePlayer(targetId).getName();
+                final String finalTargetName = rawTargetName == null ? targetId.toString() : rawTargetName;
 
                 if (viewerMember.role() == TeamRole.FOUNDER) {
                     if (targetMember.role() != TeamRole.FOUNDER) {
                         player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "KICK:" + targetId));
                         player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                        TeamConfirmGui.openKick(player, targetName);
+                        navigate(player, () -> TeamConfirmGui.openKick(player, finalTargetName));
                     }
                     return;
                 }
@@ -366,32 +540,34 @@ public final class TeamsGuiListener implements Listener {
                 if (viewerMember.role() == TeamRole.ADMIN && targetMember.role() == TeamRole.MEMBER) {
                     player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "KICK:" + targetId));
                     player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    TeamConfirmGui.openKick(player, targetName);
+                    navigate(player, () -> TeamConfirmGui.openKick(player, finalTargetName));
                     return;
                 }
 
                 player.sendMessage(core.getMessage("teams.management.cannot-kick-target"));
             }
+
             case 16 -> {
                 if (viewerMember.role() != TeamRole.FOUNDER) {
                     player.sendMessage(core.getMessage("teams.management.transfer-founder-only"));
                     return;
                 }
+
                 if (targetMember.role() == TeamRole.FOUNDER) {
                     player.sendMessage(core.getMessage("teams.management.already-founder"));
                     return;
                 }
 
-                String targetName = Bukkit.getOfflinePlayer(targetId).getName();
-                if (targetName == null) {
-                    targetName = targetId.toString();
-                }
+                String rawTargetName = Bukkit.getOfflinePlayer(targetId).getName();
+                final String finalTargetName = rawTargetName == null ? targetId.toString() : rawTargetName;
 
                 player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "TRANSFER:" + targetId));
                 player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                TeamConfirmGui.openTransfer(player, targetName);
+                navigate(player, () -> TeamConfirmGui.openTransfer(player, finalTargetName));
             }
-            case 22 -> TeamsMainGui.open(core, player, teamService, inviteService);
+
+            case 22 -> navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+
             default -> {
             }
         }
@@ -409,12 +585,7 @@ public final class TeamsGuiListener implements Listener {
 
         if (slot == 11) {
             clearConfirmMeta(player);
-            player.closeInventory();
-
-            TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-            if (team != null) {
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
+            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
 
             player.sendActionBar(Component.text(core.getMessage("teams.gui.action-cancelled")));
             player.sendMessage(core.getMessage("teams.gui.action-cancelled"));
@@ -434,6 +605,7 @@ public final class TeamsGuiListener implements Listener {
                 if (!player.isOnline()) {
                     return;
                 }
+
                 if (!player.hasMetadata(META_TEAM_ACTION) || !player.hasMetadata(META_TEAM_CONFIRM)) {
                     return;
                 }
@@ -470,42 +642,50 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.left-team"));
                 }
             }
+
             case "DISBAND" -> {
                 TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
                 if (team != null && teamService.isFounder(player.getUniqueId())) {
                     teamService.disbandTeam(team.teamId());
                     TeamGuiSession.clear(player.getUniqueId());
                     player.sendMessage(core.getMessage("teams.disbanded"));
                 }
             }
+
             case "DELETE_HOME" -> {
                 TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
                 if (team != null && teamService.isFounder(player.getUniqueId())) {
                     teamHomeService.deleteTeamHome(team.teamId());
                     player.sendMessage(core.getMessage("teams.home.deleted"));
                     TeamsMainGui.open(core, player, teamService, inviteService);
                 }
             }
+
             case "KICK" -> {
                 UUID targetId = UUID.fromString(value);
                 TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
                 if (team != null) {
                     banService.banForDefaultDuration(team.teamId(), targetId, player.getUniqueId());
                 }
+
                 teamService.removeMember(targetId);
                 player.sendMessage(core.getMessage("teams.management.kicked"));
                 TeamsMainGui.open(core, player, teamService, inviteService);
             }
+
             case "TRANSFER" -> {
                 UUID targetId = UUID.fromString(value);
                 TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-                if (team != null) {
-                    if (teamService.transferFounder(team.teamId(), player.getUniqueId(), targetId)) {
-                        player.sendMessage(core.getMessage("teams.management.transfer-success"));
-                        TeamsMainGui.open(core, player, teamService, inviteService);
-                    }
+
+                if (team != null && teamService.transferFounder(team.teamId(), player.getUniqueId(), targetId)) {
+                    player.sendMessage(core.getMessage("teams.management.transfer-success"));
+                    TeamsMainGui.open(core, player, teamService, inviteService);
                 }
             }
+
             default -> {
             }
         }
@@ -517,14 +697,13 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private void sendCreateTeamPrompt(Player player) {
-        player.sendMessage("§7Click the line below to create a team.");
+        player.sendMessage("§7Type §d/team create <name> §7to create a team.");
+        player.sendMessage("§7Click the line below to autofill it.");
         player.sendMessage(" ");
 
-        Component clickable = Component.text("§d[CLICK HERE] §7Type /team create <name>")
+        Component clickable = Component.text("§d[CLICK HERE] §7/team create ")
                 .clickEvent(ClickEvent.suggestCommand("/team create "));
 
         player.sendMessage(clickable);
-        player.sendMessage(" ");
-        player.sendMessage("§7It is clickable and will fill the command into chat for you.");
     }
 }

@@ -6,7 +6,7 @@ import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
-import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
+import net.mineacle.core.teams.gui.TeamManageGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
@@ -100,10 +100,6 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return handleSetHome(player);
             case "delhome":
                 return handleDeleteHome(player);
-            case "search":
-                return handleSearch(player, args);
-            case "invitesearch":
-                return handleInviteSearch(player, args);
             case "clearsearch":
                 return handleClearSearch(player);
             case "bans":
@@ -112,6 +108,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return handleUnban(player, args);
             case "chat":
                 return handleTeamChatSubcommand(player, args);
+            case "manage":
+                return handleManage(player);
             default:
                 player.sendMessage("§cUnknown subcommand.");
                 return true;
@@ -125,6 +123,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         String teamName = joinArgs(args, 1);
+
+        if (teamName.contains("&") || teamName.contains("§") || teamName.contains("#")) {
+            player.sendMessage(core.getMessage("teams.no-color-codes-in-name"));
+            player.sendMessage(core.getMessage("teams.manage-colors-instead"));
+            return true;
+        }
 
         if (!teamService.isValidTeamName(teamName)) {
             player.sendMessage(core.getMessage("teams.invalid-name"));
@@ -146,7 +150,9 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage(core.getMessage("teams.created").replace("%team%", teamName));
+        TeamRecord created = teamService.getTeamByPlayer(player.getUniqueId());
+        String teamDisplay = created == null ? teamName : teamService.formatTeamName(created);
+        player.sendMessage(core.getMessage("teams.created").replace("%team%", teamDisplay));
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
@@ -231,7 +237,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(core.getMessage("teams.invite.sent").replace("%player%", target.getName()));
-        target.sendMessage(core.getMessage("teams.invite.received-1").replace("%team%", team.name()));
+        target.sendMessage(core.getMessage("teams.invite.received-1").replace("%team%", teamService.formatTeamName(team)));
 
         Component accept = Component.text("§a[ACCEPT]")
                 .clickEvent(ClickEvent.runCommand("/team accept"));
@@ -268,7 +274,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        player.sendMessage(core.getMessage("teams.invite.accepted").replace("%team%", team.name()));
+        TeamRecord joined = teamService.getTeamByPlayer(player.getUniqueId());
+        player.sendMessage(core.getMessage("teams.invite.accepted").replace("%team%", joined == null ? team.name() : teamService.formatTeamName(joined)));
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
@@ -340,31 +347,6 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(core.getMessage("teams.home.deleted"));
-        return true;
-    }
-
-    private boolean handleSearch(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage("§cUsage: /team search <name>");
-            return true;
-        }
-
-        String query = joinArgs(args, 1);
-        TeamGuiSession.setMemberSearch(player.getUniqueId(), query);
-        TeamGuiSession.setPage(player.getUniqueId(), 0);
-        TeamsMainGui.open(core, player, teamService, inviteService);
-        return true;
-    }
-
-    private boolean handleInviteSearch(Player player, String[] args) {
-        if (args.length < 2) {
-            player.sendMessage("§cUsage: /team invitesearch <name>");
-            return true;
-        }
-
-        String query = joinArgs(args, 1);
-        TeamGuiSession.setInviteSearch(player.getUniqueId(), query);
-        TeamInvitePlayerGui.open(core, player, teamService);
         return true;
     }
 
@@ -465,6 +447,22 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean handleManage(Player player) {
+        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+        if (team == null) {
+            player.sendMessage(core.getMessage("teams.no-team"));
+            return true;
+        }
+
+        if (!teamService.isAdmin(player.getUniqueId())) {
+            player.sendMessage(core.getMessage("teams.management.no-permission"));
+            return true;
+        }
+
+        TeamManageGui.open(core, player, teamService);
+        return true;
+    }
+
     private String joinArgs(String[] args, int startIndex) {
         StringBuilder builder = new StringBuilder();
         for (int i = startIndex; i < args.length; i++) {
@@ -486,7 +484,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "search", "invitesearch", "clearsearch", "bans", "unban", "chat")) {
+            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "clearsearch", "bans", "unban", "chat", "manage")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     completions.add(option);
                 }
