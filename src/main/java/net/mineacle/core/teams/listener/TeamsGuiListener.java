@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamBannerColorGui;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
@@ -24,7 +25,6 @@ import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
-import net.mineacle.core.teams.sign.TeamSignService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
@@ -53,7 +53,7 @@ public final class TeamsGuiListener implements Listener {
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
     private final TeleportService teleportService;
-    private final TeamSignService teamSignService;
+    private final PlayerStatisticsGui playerStatisticsGui;
 
     private final Set<UUID> navigating = ConcurrentHashMap.newKeySet();
 
@@ -64,7 +64,7 @@ public final class TeamsGuiListener implements Listener {
             TeamInviteService inviteService,
             TeamHomeService teamHomeService,
             TeleportService teleportService,
-            TeamSignService teamSignService
+            PlayerStatisticsGui playerStatisticsGui
     ) {
         this.core = core;
         this.teamService = teamService;
@@ -72,7 +72,7 @@ public final class TeamsGuiListener implements Listener {
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
         this.teleportService = teleportService;
-        this.teamSignService = teamSignService;
+        this.playerStatisticsGui = playerStatisticsGui;
     }
 
     @EventHandler
@@ -142,9 +142,53 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (title.startsWith(cleanTitle(TeamsMainGui.TEAM_TITLE(core)))) {
+        if (teamService.getTeamByPlayer(player.getUniqueId()) != null && topSize == 54) {
             event.setCancelled(true);
             handleMainTeamClick(player, slot);
+        }
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        if (!(event.getPlayer() instanceof Player player)) {
+            return;
+        }
+
+        UUID uuid = player.getUniqueId();
+
+        if (navigating.remove(uuid)) {
+            return;
+        }
+
+        String title = cleanTitle(event.getView().getTitle());
+
+        if (title.equals("banner color")
+                || title.equals("name color")
+                || title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
+            Bukkit.getScheduler().runTask(core, () -> {
+                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null && teamService.isAdmin(uuid)) {
+                    TeamManageGui.open(core, player, teamService);
+                }
+            });
+            return;
+        }
+
+        if (title.equals("team manage")
+                || title.equals(cleanTitle(TeamManageGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamBansGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamInviteGui.TITLE(core)))
+                || title.equals(cleanTitle(core.getMessage("teams.gui.member-manager-title")))
+                || title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
+            Bukkit.getScheduler().runTask(core, () -> {
+                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null) {
+                    TeamsMainGui.open(core, player, teamService, inviteService);
+                }
+            });
         }
     }
 
@@ -177,58 +221,52 @@ public final class TeamsGuiListener implements Listener {
         }
 
         TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
-        String search = TeamGuiSession.getMemberSearch(player.getUniqueId()).toLowerCase(Locale.ROOT);
-
-        List<UUID> allMembers = teamService.getSortedTeamMembers(team.teamId(), sortType);
-        List<UUID> filteredMembers = new ArrayList<>();
-
-        for (UUID memberId : allMembers) {
-            String name = Bukkit.getOfflinePlayer(memberId).getName();
-            String compare = name == null ? memberId.toString() : name;
-
-            if (!search.isBlank() && !compare.toLowerCase(Locale.ROOT).contains(search)) {
-                continue;
-            }
-
-            filteredMembers.add(memberId);
-        }
+        List<UUID> members = new ArrayList<>(teamService.getSortedTeamMembers(team.teamId(), sortType));
 
         int page = TeamGuiSession.getPage(player.getUniqueId());
         int startIndex = page * 45;
+        int endIndex = Math.min(startIndex + 45, members.size());
+        int visibleMemberCount = Math.max(0, endIndex - startIndex);
 
         if (slot >= 0 && slot < 45) {
             int index = startIndex + slot;
-            if (index >= filteredMembers.size()) {
+
+            if (index < members.size()) {
+                UUID targetId = members.get(index);
+                playerStatisticsGui.open(player, targetId);
                 return;
             }
 
-            UUID targetId = filteredMembers.get(index);
-            player.setMetadata(META_MANAGE_TARGET, new FixedMetadataValue(core, targetId.toString()));
-            navigate(player, () -> TeamMemberManageGui.open(player, targetId, teamService));
-            return;
-        }
-
-        switch (slot) {
-            case 45 -> {
-                player.closeInventory();
-                Bukkit.getScheduler().runTaskLater(core, () -> teamSignService.openSearchSign(player), 1L);
-            }
-
-            case 46 -> {
-                TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
-                TeamGuiSession.setSort(player.getUniqueId(), next);
-                TeamGuiSession.setPage(player.getUniqueId(), 0);
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
-
-            case 47 -> {
+            if (page == 0 && slot == visibleMemberCount) {
                 if (!teamService.isAdmin(player.getUniqueId())) {
                     player.sendMessage(core.getMessage("teams.invite.no-permission"));
                     return;
                 }
 
+                if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+                    player.sendMessage("§cYour team is full.");
+                    return;
+                }
+
                 player.closeInventory();
-                Bukkit.getScheduler().runTaskLater(core, () -> teamSignService.openInviteSign(player), 1L);
+                player.sendMessage("§7Type the player name after the command to invite them.");
+
+                Component clickable = Component.text("§d/team invite ")
+                        .clickEvent(ClickEvent.suggestCommand("/team invite "));
+
+                player.sendMessage(clickable);
+                return;
+            }
+
+            return;
+        }
+
+        switch (slot) {
+            case 46 -> {
+                TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
+                TeamGuiSession.setSort(player.getUniqueId(), next);
+                TeamGuiSession.setPage(player.getUniqueId(), 0);
+                TeamsMainGui.open(core, player, teamService, inviteService);
             }
 
             case 48 -> {
@@ -244,7 +282,7 @@ public final class TeamsGuiListener implements Listener {
 
             case 50 -> {
                 int current = TeamGuiSession.getPage(player.getUniqueId());
-                int maxPage = Math.max(0, (filteredMembers.size() - 1) / 45);
+                int maxPage = Math.max(0, (members.size() - 1) / 45);
 
                 if (current < maxPage) {
                     TeamGuiSession.setPage(player.getUniqueId(), current + 1);
@@ -379,6 +417,15 @@ public final class TeamsGuiListener implements Listener {
 
     private void handleInviteGuiClick(Player player, int slot) {
         if (slot == 11) {
+            TeamRecord inviteTeam = inviteService.getInvite(player.getUniqueId()) == null
+                    ? null
+                    : teamService.getTeamById(inviteService.getInvite(player.getUniqueId()).teamId());
+
+            if (inviteTeam != null && teamService.getTeamMembers(inviteTeam.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+                player.sendMessage("§cThat team is full.");
+                return;
+            }
+
             if (!inviteService.acceptInvite(player.getUniqueId())) {
                 player.sendMessage("§cCould not accept the invite.");
                 return;

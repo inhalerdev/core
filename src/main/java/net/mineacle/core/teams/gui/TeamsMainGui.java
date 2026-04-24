@@ -19,7 +19,6 @@ import org.bukkit.inventory.meta.SkullMeta;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.UUID;
 
 public final class TeamsMainGui {
@@ -82,33 +81,19 @@ public final class TeamsMainGui {
     private static void openTeamMenu(Core core, Player player, TeamService teamService, TeamRecord team) {
         TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
         int page = TeamGuiSession.getPage(player.getUniqueId());
-        String search = TeamGuiSession.getMemberSearch(player.getUniqueId()).toLowerCase(Locale.ROOT);
 
         List<UUID> sortedMembers = teamService.getSortedTeamMembers(team.teamId(), sortType);
-        List<UUID> filteredMembers = new ArrayList<>();
-
-        for (UUID memberId : sortedMembers) {
-            OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
-            String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
-
-            if (!search.isBlank() && !name.toLowerCase(Locale.ROOT).contains(search)) {
-                continue;
-            }
-
-            filteredMembers.add(memberId);
-        }
-
         int memberCount = teamService.getTeamMembers(team.teamId()).size();
-        String title = teamService.formatTeamName(team) + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
 
+        String title = teamService.formatTeamName(team) + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
         Inventory inventory = Bukkit.createInventory(null, 54, title);
 
         int startIndex = page * 45;
-        int endIndex = Math.min(startIndex + 45, filteredMembers.size());
+        int endIndex = Math.min(startIndex + 45, sortedMembers.size());
 
         int guiSlot = 0;
         for (int i = startIndex; i < endIndex; i++) {
-            UUID memberId = filteredMembers.get(i);
+            UUID memberId = sortedMembers.get(i);
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
             String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
 
@@ -120,14 +105,14 @@ public final class TeamsMainGui {
                     "&f" + name,
                     List.of(
                             "&7Role: &d" + role,
-                            "&7Click to view player stats / manage."
+                            "&7Click to view statistics."
                     )
             ));
 
             guiSlot++;
         }
 
-        if (memberCount < TEAM_SIZE_LIMIT && guiSlot < 45 && page == 0) {
+        if (teamService.isAdmin(player.getUniqueId()) && memberCount < TEAM_SIZE_LIMIT && guiSlot < 45 && page == 0) {
             inventory.setItem(guiSlot, item(
                     Material.LIME_STAINED_GLASS_PANE,
                     "&aInvite Player",
@@ -234,7 +219,6 @@ public final class TeamsMainGui {
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         item.setItemMeta(meta);
-
         return item;
     }
 
@@ -249,7 +233,6 @@ public final class TeamsMainGui {
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         item.setItemMeta(meta);
-
         return item;
     }
 

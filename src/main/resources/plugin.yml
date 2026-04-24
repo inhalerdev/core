@@ -35,6 +35,10 @@ commands:
     aliases: [tc]
     permission: mineacleteams.use
 
+  stats:
+    description: Open player statistics
+    permission: mineacleteams.use
+
 permissions:
   mineaclehomes.use:
     default: true

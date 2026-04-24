@@ -3,6 +3,8 @@ package net.mineacle.core.teams;
 import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.stats.PlayerStatisticsGui;
+import net.mineacle.core.stats.StatsCommand;
 import net.mineacle.core.teams.command.TeamCommand;
 import net.mineacle.core.teams.listener.TeamChatListener;
 import net.mineacle.core.teams.listener.TeamSignListener;
@@ -27,6 +29,7 @@ public final class TeamsModule extends Module {
     private TeamChatService teamChatService;
     private TeleportService teleportService;
     private TeamSignService teamSignService;
+    private PlayerStatisticsGui playerStatisticsGui;
 
     @Override
     public String name() {
@@ -43,6 +46,7 @@ public final class TeamsModule extends Module {
         this.teamChatService = new TeamChatService(core, teamService);
         this.teleportService = new TeleportService(core);
         this.teamSignService = new TeamSignService(core);
+        this.playerStatisticsGui = new PlayerStatisticsGui(core);
 
         TeamCommand teamCommand = new TeamCommand(
                 core,
@@ -57,8 +61,15 @@ public final class TeamsModule extends Module {
         registerCommand("team", teamCommand, teamCommand);
         registerCommand("teamchat", teamCommand, teamCommand);
 
+        PluginCommand statsCommand = core.getCommand("stats");
+        if (statsCommand != null) {
+            statsCommand.setExecutor(new StatsCommand(core, playerStatisticsGui));
+        } else {
+            core.getLogger().warning("Missing command in plugin.yml: stats");
+        }
+
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService, teamSignService),
+                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService, playerStatisticsGui),
                 core
         );
 
@@ -71,6 +82,8 @@ public final class TeamsModule extends Module {
                 new TeamSignListener(core, teamService, banService, inviteService, teamSignService),
                 core
         );
+
+        core.getServer().getPluginManager().registerEvents(playerStatisticsGui, core);
     }
 
     @Override

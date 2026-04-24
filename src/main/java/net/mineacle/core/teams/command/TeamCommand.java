@@ -6,6 +6,7 @@ import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
+import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamManageGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
@@ -94,14 +95,14 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return handleAccept(player);
             case "deny":
                 return handleDeny(player);
+            case "invites":
+                return handleInvites(player);
             case "home":
                 return handleHome(player);
             case "sethome":
                 return handleSetHome(player);
             case "delhome":
                 return handleDeleteHome(player);
-            case "clearsearch":
-                return handleClearSearch(player);
             case "bans":
                 return handleBans(player);
             case "unban":
@@ -215,9 +216,19 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+            player.sendMessage("§cYour team is full.");
+            return true;
+        }
+
         Player target = Bukkit.getPlayerExact(args[1]);
         if (target == null) {
             player.sendMessage(core.getMessage("teams.invite.offline"));
+            return true;
+        }
+
+        if (target.getUniqueId().equals(player.getUniqueId())) {
+            player.sendMessage("§cYou cannot invite yourself.");
             return true;
         }
 
@@ -237,15 +248,35 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(core.getMessage("teams.invite.sent").replace("%player%", target.getName()));
-        target.sendMessage(core.getMessage("teams.invite.received-1").replace("%team%", teamService.formatTeamName(team)));
+        sendInviteNotification(target, player, team);
+        return true;
+    }
 
-        Component accept = Component.text("§a[ACCEPT]")
-                .clickEvent(ClickEvent.runCommand("/team accept"));
-        Component spacer = Component.text(" §7or ");
-        Component deny = Component.text("§c[DENY]")
-                .clickEvent(ClickEvent.runCommand("/team deny"));
+    private void sendInviteNotification(Player target, Player inviter, TeamRecord team) {
+        String teamName = teamService.formatTeamName(team);
 
-        target.sendMessage(accept.append(spacer).append(deny));
+        target.sendActionBar(Component.text("§dTeam invite received from §f" + inviter.getName()));
+
+        target.sendMessage(" ");
+        target.sendMessage(Component.text("§7You were invited to join ").append(Component.text(teamName)));
+        target.sendMessage(Component.text("§7Invited by §d" + inviter.getName()));
+
+        Component open = Component.text("§a[VIEW INVITE]")
+                .clickEvent(ClickEvent.runCommand("/team invites"));
+
+        target.sendMessage(open);
+        target.sendMessage(" ");
+    }
+
+    private boolean handleInvites(Player player) {
+        if (!inviteService.hasInvite(player.getUniqueId())) {
+            String message = "§cYou have no current team invites.";
+            player.sendActionBar(Component.text(message));
+            player.sendMessage(message);
+            return true;
+        }
+
+        TeamInviteGui.open(core, player, inviteService, teamService);
         return true;
     }
 
@@ -260,6 +291,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         if (team == null) {
             inviteService.denyInvite(player.getUniqueId());
             player.sendMessage(core.getMessage("teams.invite.team-gone"));
+            return true;
+        }
+
+        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+            inviteService.denyInvite(player.getUniqueId());
+            player.sendMessage("§cThat team is full.");
             return true;
         }
 
@@ -347,14 +384,6 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage(core.getMessage("teams.home.deleted"));
-        return true;
-    }
-
-    private boolean handleClearSearch(Player player) {
-        TeamGuiSession.setMemberSearch(player.getUniqueId(), "");
-        TeamGuiSession.setInviteSearch(player.getUniqueId(), "");
-        TeamGuiSession.setPage(player.getUniqueId(), 0);
-        TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
 
@@ -484,7 +513,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "clearsearch", "bans", "unban", "chat", "manage")) {
+            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "bans", "unban", "chat", "manage")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     completions.add(option);
                 }
