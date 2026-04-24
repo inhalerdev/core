@@ -1,13 +1,13 @@
 package net.mineacle.core.teams.listener;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInviteGui;
-import net.mineacle.core.teams.gui.TeamInvitePlayerGui;
 import net.mineacle.core.teams.gui.TeamMemberManageGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamBanRecord;
@@ -19,6 +19,7 @@ import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
+import net.mineacle.core.teams.sign.TeamSignService;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -43,6 +44,7 @@ public final class TeamsGuiListener implements Listener {
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
     private final TeleportService teleportService;
+    private final TeamSignService teamSignService;
 
     public TeamsGuiListener(
             Core core,
@@ -50,7 +52,8 @@ public final class TeamsGuiListener implements Listener {
             TeamBanService banService,
             TeamInviteService inviteService,
             TeamHomeService teamHomeService,
-            TeleportService teleportService
+            TeleportService teleportService,
+            TeamSignService teamSignService
     ) {
         this.core = core;
         this.teamService = teamService;
@@ -58,6 +61,7 @@ public final class TeamsGuiListener implements Listener {
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
         this.teleportService = teleportService;
+        this.teamSignService = teamSignService;
     }
 
     @EventHandler
@@ -80,7 +84,7 @@ public final class TeamsGuiListener implements Listener {
 
             if (slot == 11) {
                 player.closeInventory();
-                player.sendMessage(core.getMessage("teams.gui.create-team-lore-1"));
+                sendCreateTeamPrompt(player);
                 return;
             }
 
@@ -94,12 +98,6 @@ public final class TeamsGuiListener implements Listener {
         if (title.equals(TeamInviteGui.TITLE(core))) {
             event.setCancelled(true);
             handleInviteGuiClick(player, slot);
-            return;
-        }
-
-        if (title.equals(TeamInvitePlayerGui.TITLE(core))) {
-            event.setCancelled(true);
-            handleInvitePlayerGuiClick(player, slot);
             return;
         }
 
@@ -166,8 +164,7 @@ public final class TeamsGuiListener implements Listener {
         switch (slot) {
             case 45 -> {
                 player.closeInventory();
-                player.sendMessage(core.getMessage("teams.gui.search-help-1"));
-                player.sendMessage(core.getMessage("teams.gui.search-help-2"));
+                teamSignService.openSearchSign(player);
             }
             case 46 -> {
                 TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
@@ -180,7 +177,8 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.invite.no-permission"));
                     return;
                 }
-                TeamInvitePlayerGui.open(core, player, teamService);
+                player.closeInventory();
+                teamSignService.openInviteSign(player);
             }
             case 48 -> {
                 int current = TeamGuiSession.getPage(player.getUniqueId());
@@ -271,83 +269,6 @@ public final class TeamsGuiListener implements Listener {
             player.sendMessage(core.getMessage("teams.invite.denied"));
             TeamsMainGui.open(core, player, teamService, inviteService);
         }
-    }
-
-    private void handleInvitePlayerGuiClick(Player player, int slot) {
-        if (slot == 45) {
-            player.closeInventory();
-            player.sendMessage(core.getMessage("teams.gui.invite-search-help-1"));
-            player.sendMessage(core.getMessage("teams.gui.invite-search-help-2"));
-            return;
-        }
-
-        if (slot == 49) {
-            TeamsMainGui.open(core, player, teamService, inviteService);
-            return;
-        }
-
-        if (slot == 53) {
-            TeamGuiSession.setInviteSearch(player.getUniqueId(), "");
-            TeamInvitePlayerGui.open(core, player, teamService);
-            return;
-        }
-
-        if (slot < 0 || slot >= 45) {
-            return;
-        }
-
-        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-        if (team == null) {
-            player.closeInventory();
-            return;
-        }
-
-        String search = TeamGuiSession.getInviteSearch(player.getUniqueId()).toLowerCase(Locale.ROOT);
-
-        List<Player> candidates = new ArrayList<>();
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.getUniqueId().equals(player.getUniqueId())) {
-                continue;
-            }
-            if (teamService.hasTeam(online.getUniqueId())) {
-                continue;
-            }
-            if (!search.isBlank() && !online.getName().toLowerCase(Locale.ROOT).contains(search)) {
-                continue;
-            }
-            if (candidates.size() >= 45) {
-                break;
-            }
-            candidates.add(online);
-        }
-
-        if (slot >= candidates.size()) {
-            return;
-        }
-
-        Player target = candidates.get(slot);
-
-        if (banService.isBanned(team.teamId(), target.getUniqueId())) {
-            player.sendMessage(core.getMessage("teams.invite.banned-target"));
-            return;
-        }
-
-        if (!inviteService.createInvite(team.teamId(), player.getUniqueId(), target.getUniqueId())) {
-            player.sendMessage(core.getMessage("teams.invite.failed"));
-            return;
-        }
-
-        player.sendMessage(core.getMessage("teams.invite.sent").replace("%player%", target.getName()));
-        target.sendMessage(core.getMessage("teams.invite.received-1").replace("%team%", team.name()));
-
-        net.kyori.adventure.text.Component accept = net.kyori.adventure.text.Component.text("§a[ACCEPT]")
-                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/team accept"));
-        net.kyori.adventure.text.Component spacer = net.kyori.adventure.text.Component.text(" §7or ");
-        net.kyori.adventure.text.Component deny = net.kyori.adventure.text.Component.text("§c[DENY]")
-                .clickEvent(net.kyori.adventure.text.event.ClickEvent.runCommand("/team deny"));
-        target.sendMessage(accept.append(spacer).append(deny));
-
-        TeamsMainGui.open(core, player, teamService, inviteService);
     }
 
     private void handleBansGuiClick(Player player, int slot) {
@@ -593,5 +514,17 @@ public final class TeamsGuiListener implements Listener {
     private void clearConfirmMeta(Player player) {
         player.removeMetadata(META_TEAM_ACTION, core);
         player.removeMetadata(META_TEAM_CONFIRM, core);
+    }
+
+    private void sendCreateTeamPrompt(Player player) {
+        player.sendMessage("§7Click the line below to create a team.");
+        player.sendMessage(" ");
+
+        Component clickable = Component.text("§d[CLICK HERE] §7Type /team create <name>")
+                .clickEvent(ClickEvent.suggestCommand("/team create "));
+
+        player.sendMessage(clickable);
+        player.sendMessage(" ");
+        player.sendMessage("§7It is clickable and will fill the command into chat for you.");
     }
 }

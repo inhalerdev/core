@@ -5,12 +5,14 @@ import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.command.TeamCommand;
 import net.mineacle.core.teams.listener.TeamChatListener;
+import net.mineacle.core.teams.listener.TeamSignListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
 import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamChatService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
+import net.mineacle.core.teams.sign.TeamSignService;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.command.TabCompleter;
@@ -24,6 +26,7 @@ public final class TeamsModule extends Module {
     private TeamHomeService teamHomeService;
     private TeamChatService teamChatService;
     private TeleportService teleportService;
+    private TeamSignService teamSignService;
 
     @Override
     public String name() {
@@ -39,6 +42,7 @@ public final class TeamsModule extends Module {
         this.teamHomeService = new TeamHomeService(core, teamService);
         this.teamChatService = new TeamChatService(core, teamService);
         this.teleportService = new TeleportService(core);
+        this.teamSignService = new TeamSignService(core);
 
         TeamCommand teamCommand = new TeamCommand(
                 core,
@@ -54,12 +58,17 @@ public final class TeamsModule extends Module {
         registerCommand("teamchat", teamCommand, teamCommand);
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService),
+                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService, teamSignService),
                 core
         );
 
         core.getServer().getPluginManager().registerEvents(
                 new TeamChatListener(teamChatService),
+                core
+        );
+
+        core.getServer().getPluginManager().registerEvents(
+                new TeamSignListener(core, teamService, banService, inviteService, teamSignService),
                 core
         );
     }
