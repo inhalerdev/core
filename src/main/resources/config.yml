@@ -2,9 +2,18 @@ homes:
   max-homes:
     default: 2
     plus: 5
+
   plus-permission: mineacle.plus
 
-  blocked-set-worlds: []
+  allowed-worlds:
+    enabled: false
+    worlds:
+      - world
+      - world_nether
+      - world_the_end
+
+  blocked-worlds:
+    - example_blocked_world
 
   teleport:
     delay-seconds: 5
@@ -19,6 +28,16 @@ homes:
     dye-slot: 19
     teleport-delay-seconds: 5
     delete-confirm-timeout-seconds: 5
+
+    allowed-worlds:
+      enabled: false
+      worlds:
+        - world
+        - world_nether
+        - world_the_end
+
+    blocked-worlds:
+      - example_blocked_world
 
 teams:
   enabled: true

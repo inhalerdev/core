@@ -26,6 +26,7 @@ import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
 import net.mineacle.core.teams.sign.TeamSignService;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -80,76 +81,68 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (event.getClickedInventory() == null) {
+        int topSize = event.getView().getTopInventory().getSize();
+        int slot = event.getRawSlot();
+
+        if (slot < 0 || slot >= topSize) {
             return;
         }
 
-        String title = event.getView().getTitle();
-        int slot = event.getRawSlot();
+        String title = cleanTitle(event.getView().getTitle());
 
-        if (title.startsWith(TeamsMainGui.TEAM_TITLE(core))) {
+        if (title.equals(cleanTitle(TeamsMainGui.NO_TEAM_TITLE(core)))) {
+            event.setCancelled(true);
+            handleNoTeamClick(player, slot);
+            return;
+        }
+
+        if (title.startsWith(cleanTitle(TeamsMainGui.TEAM_TITLE(core)))) {
             event.setCancelled(true);
             handleMainTeamClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamsMainGui.NO_TEAM_TITLE(core))) {
-            event.setCancelled(true);
-
-            if (slot == 11 || slot == 13) {
-                player.closeInventory();
-                sendCreateTeamPrompt(player);
-                return;
-            }
-
-            if (slot == 15) {
-                navigate(player, () -> TeamInviteGui.open(core, player, inviteService, teamService));
-            }
-
-            return;
-        }
-
-        if (title.equals(TeamInviteGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamInviteGui.TITLE(core)))) {
             event.setCancelled(true);
             handleInviteGuiClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamBansGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamBansGui.TITLE(core)))) {
             event.setCancelled(true);
             handleBansGuiClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamManageGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamManageGui.TITLE(core)))) {
             event.setCancelled(true);
             handleManageGuiClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamBannerColorGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))) {
             event.setCancelled(true);
             handleBannerColorGuiClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamNameColorGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
             event.setCancelled(true);
             handleNameColorGuiClick(player, slot);
             return;
         }
 
-        if (title.equals(org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("teams.gui.member-manager-title")))) {
+        if (title.equals(cleanTitle(core.getMessage("teams.gui.member-manager-title")))) {
             event.setCancelled(true);
             handleManageMemberClick(player, slot);
             return;
         }
 
-        if (title.equals(TeamConfirmGui.LEAVE_TITLE)
-                || title.equals(TeamConfirmGui.DISBAND_TITLE)
-                || title.equals(TeamConfirmGui.DELETE_HOME_TITLE)
-                || title.equals(TeamConfirmGui.KICK_TITLE)
-                || title.equals(TeamConfirmGui.TRANSFER_TITLE)) {
+        if (title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
             event.setCancelled(true);
             handleConfirmClick(player, slot);
         }
@@ -161,48 +154,51 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (navigating.remove(player.getUniqueId())) {
+        UUID uuid = player.getUniqueId();
+
+        if (navigating.remove(uuid)) {
             return;
         }
 
-        String title = event.getView().getTitle();
+        String title = cleanTitle(event.getView().getTitle());
 
-        if (title.equals(TeamBannerColorGui.TITLE(core)) || title.equals(TeamNameColorGui.TITLE(core))) {
+        if (title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
             Bukkit.getScheduler().runTask(core, () -> {
-                if (!player.isOnline()) {
-                    return;
-                }
-
-                TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-                if (team != null && teamService.isAdmin(player.getUniqueId())) {
+                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null && teamService.isAdmin(uuid)) {
                     TeamManageGui.open(core, player, teamService);
                 }
             });
             return;
         }
 
-        if (title.equals(TeamManageGui.TITLE(core))
-                || title.equals(TeamBansGui.TITLE(core))
-                || title.equals(org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("teams.gui.member-manager-title")))
-                || title.equals(TeamInviteGui.TITLE(core))
-                || title.equals(TeamConfirmGui.LEAVE_TITLE)
-                || title.equals(TeamConfirmGui.DISBAND_TITLE)
-                || title.equals(TeamConfirmGui.DELETE_HOME_TITLE)
-                || title.equals(TeamConfirmGui.KICK_TITLE)
-                || title.equals(TeamConfirmGui.TRANSFER_TITLE)) {
+        if (title.equals(cleanTitle(TeamManageGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamBansGui.TITLE(core)))
+                || title.equals(cleanTitle(TeamInviteGui.TITLE(core)))
+                || title.equals(cleanTitle(core.getMessage("teams.gui.member-manager-title")))
+                || title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
+                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
             Bukkit.getScheduler().runTask(core, () -> {
-                if (!player.isOnline()) {
-                    return;
+                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null) {
+                    TeamsMainGui.open(core, player, teamService, inviteService);
                 }
-
-                TeamsMainGui.open(core, player, teamService, inviteService);
             });
         }
     }
 
-    private void navigate(Player player, Runnable openAction) {
-        navigating.add(player.getUniqueId());
-        openAction.run();
+    private void handleNoTeamClick(Player player, int slot) {
+        if (slot == 15 && inviteService.hasInvite(player.getUniqueId())) {
+            navigate(player, () -> TeamInviteGui.open(core, player, inviteService, teamService));
+            return;
+        }
+
+        if (slot == 11 || slot == 13 || slot == 15) {
+            player.closeInventory();
+            Bukkit.getScheduler().runTaskLater(core, () -> sendCreateTeamPrompt(player), 1L);
+        }
     }
 
     private void handleMainTeamClick(Player player, int slot) {
@@ -247,7 +243,7 @@ public final class TeamsGuiListener implements Listener {
         switch (slot) {
             case 45 -> {
                 player.closeInventory();
-                teamSignService.openSearchSign(player);
+                Bukkit.getScheduler().runTaskLater(core, () -> teamSignService.openSearchSign(player), 1L);
             }
 
             case 46 -> {
@@ -264,7 +260,7 @@ public final class TeamsGuiListener implements Listener {
                 }
 
                 player.closeInventory();
-                teamSignService.openInviteSign(player);
+                Bukkit.getScheduler().runTaskLater(core, () -> teamSignService.openInviteSign(player), 1L);
             }
 
             case 48 -> {
@@ -691,6 +687,22 @@ public final class TeamsGuiListener implements Listener {
         }
     }
 
+    private void navigate(Player player, Runnable openAction) {
+        UUID uuid = player.getUniqueId();
+        navigating.add(uuid);
+
+        Bukkit.getScheduler().runTask(core, () -> {
+            if (!player.isOnline()) {
+                navigating.remove(uuid);
+                return;
+            }
+
+            openAction.run();
+
+            Bukkit.getScheduler().runTaskLater(core, () -> navigating.remove(uuid), 2L);
+        });
+    }
+
     private void clearConfirmMeta(Player player) {
         player.removeMetadata(META_TEAM_ACTION, core);
         player.removeMetadata(META_TEAM_CONFIRM, core);
@@ -705,5 +717,11 @@ public final class TeamsGuiListener implements Listener {
                 .clickEvent(ClickEvent.suggestCommand("/team create "));
 
         player.sendMessage(clickable);
+    }
+
+    private String cleanTitle(String input) {
+        String colored = ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        String stripped = ChatColor.stripColor(colored);
+        return stripped == null ? "" : stripped.trim().toLowerCase(Locale.ROOT);
     }
 }

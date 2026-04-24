@@ -195,7 +195,7 @@ public final class HomesGuiListener implements Listener {
                 return;
             }
 
-            if (worldRules.isBlockedWorld(player.getLocation())) {
+            if (worldRules.isTeamHomeBlockedWorld(player.getLocation())) {
                 String message = core.getMessage("homes.blocked-team-home-world");
                 player.sendActionBar(Component.text(message));
                 player.sendMessage(message);
