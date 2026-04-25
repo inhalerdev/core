@@ -80,20 +80,18 @@ public final class TeamsMainGui {
 
     private static void openTeamMenu(Core core, Player player, TeamService teamService, TeamRecord team) {
         TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
-        int page = TeamGuiSession.getPage(player.getUniqueId());
-
-        List<UUID> sortedMembers = teamService.getSortedTeamMembers(team.teamId(), sortType);
+        List<UUID> members = teamService.getSortedTeamMembers(team.teamId(), sortType);
         int memberCount = teamService.getTeamMembers(team.teamId()).size();
 
-        String title = teamService.formatTeamName(team) + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
+        String title = team.name() + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
         Inventory inventory = Bukkit.createInventory(null, 54, title);
 
-        int startIndex = page * 45;
-        int endIndex = Math.min(startIndex + 45, sortedMembers.size());
-
         int guiSlot = 0;
-        for (int i = startIndex; i < endIndex; i++) {
-            UUID memberId = sortedMembers.get(i);
+        for (UUID memberId : members) {
+            if (guiSlot >= 45) {
+                break;
+            }
+
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
             String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
 
@@ -112,7 +110,7 @@ public final class TeamsMainGui {
             guiSlot++;
         }
 
-        if (teamService.isAdmin(player.getUniqueId()) && memberCount < TEAM_SIZE_LIMIT && guiSlot < 45 && page == 0) {
+        if (teamService.isAdmin(player.getUniqueId()) && memberCount < TEAM_SIZE_LIMIT && guiSlot < 45) {
             inventory.setItem(guiSlot, item(
                     Material.LIME_STAINED_GLASS_PANE,
                     "&aInvite Player",
@@ -123,17 +121,28 @@ public final class TeamsMainGui {
             ));
         }
 
-        inventory.setItem(46, item(
+        inventory.setItem(45, item(
                 Material.HOPPER,
                 core.getMessage("teams.gui.sort-title"),
                 sortLore(sortType)
         ));
 
-        inventory.setItem(48, item(
-                Material.NAME_TAG,
-                core.getMessage("teams.gui.manage-button-title"),
-                List.of(core.getMessage("teams.gui.manage-button-lore-1"))
+        inventory.setItem(47, item(
+                team.bannerColor().bannerMaterial(),
+                core.getMessage("teams.gui.team-home-title"),
+                List.of(core.getMessage("teams.gui.team-home-lore-1"))
         ));
+
+        if (teamService.isAdmin(player.getUniqueId())) {
+            inventory.setItem(48, item(
+                    team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER,
+                    core.getMessage("teams.gui.friendly-fire-title"),
+                    List.of(
+                            team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
+                            core.getMessage("teams.gui.friendly-fire-lore-2")
+                    )
+            ));
+        }
 
         String leaderName = Bukkit.getOfflinePlayer(team.founder()).getName();
         if (leaderName == null) {
@@ -141,7 +150,7 @@ public final class TeamsMainGui {
         }
 
         inventory.setItem(49, item(
-                team.bannerColor().bannerMaterial(),
+                Material.IRON_HELMET,
                 core.getMessage("teams.gui.team-info-title"),
                 List.of(
                         "&fTeam: " + teamService.formatTeamName(team),
@@ -151,34 +160,19 @@ public final class TeamsMainGui {
                 )
         ));
 
-        inventory.setItem(50, item(
-                Material.ARROW,
-                core.getMessage("teams.gui.next-title"),
-                List.of(core.getMessage("teams.gui.next-lore-1"))
-        ));
+        if (teamService.isAdmin(player.getUniqueId())) {
+            inventory.setItem(50, item(
+                    Material.NAME_TAG,
+                    core.getMessage("teams.gui.manage-button-title"),
+                    List.of(core.getMessage("teams.gui.manage-button-lore-1"))
+            ));
 
-        inventory.setItem(51, item(
-                teamService.isFounder(player.getUniqueId()) ? Material.TNT : Material.RED_STAINED_GLASS_PANE,
-                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.disband-title") : core.getMessage("teams.gui.leave-title"),
-                List.of(teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.disband-lore-1") : core.getMessage("teams.gui.leave-lore-1"))
-        ));
-
-        inventory.setItem(52, item(
-                team.bannerColor().bannerMaterial(),
-                core.getMessage("teams.gui.team-home-title"),
-                List.of(core.getMessage("teams.gui.team-home-lore-1"))
-        ));
-
-        inventory.setItem(53, item(
-                teamService.isFounder(player.getUniqueId()) ? Material.PAPER : (team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER),
-                teamService.isFounder(player.getUniqueId()) ? core.getMessage("teams.gui.bans-button-title") : core.getMessage("teams.gui.friendly-fire-title"),
-                teamService.isFounder(player.getUniqueId())
-                        ? List.of(core.getMessage("teams.gui.bans-button-lore-1"))
-                        : List.of(
-                        team.friendlyFire() ? core.getMessage("teams.gui.friendly-fire-enabled") : core.getMessage("teams.gui.friendly-fire-disabled"),
-                        core.getMessage("teams.gui.friendly-fire-lore-2")
-                )
-        ));
+            inventory.setItem(51, item(
+                    Material.PAPER,
+                    core.getMessage("teams.gui.bans-button-title"),
+                    List.of(core.getMessage("teams.gui.bans-button-lore-1"))
+            ));
+        }
 
         player.openInventory(inventory);
     }
@@ -233,6 +227,7 @@ public final class TeamsMainGui {
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         item.setItemMeta(meta);
+
         return item;
     }
 

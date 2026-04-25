@@ -222,32 +222,16 @@ public final class TeamsGuiListener implements Listener {
 
         TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
         List<UUID> members = new ArrayList<>(teamService.getSortedTeamMembers(team.teamId(), sortType));
-
-        int page = TeamGuiSession.getPage(player.getUniqueId());
-        int startIndex = page * 45;
-        int endIndex = Math.min(startIndex + 45, members.size());
-        int visibleMemberCount = Math.max(0, endIndex - startIndex);
+        int memberCount = teamService.getTeamMembers(team.teamId()).size();
 
         if (slot >= 0 && slot < 45) {
-            int index = startIndex + slot;
-
-            if (index < members.size()) {
-                UUID targetId = members.get(index);
+            if (slot < members.size()) {
+                UUID targetId = members.get(slot);
                 playerStatisticsGui.open(player, targetId);
                 return;
             }
 
-            if (page == 0 && slot == visibleMemberCount) {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage(core.getMessage("teams.invite.no-permission"));
-                    return;
-                }
-
-                if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
-                    player.sendMessage("§cYour team is full.");
-                    return;
-                }
-
+            if (teamService.isAdmin(player.getUniqueId()) && slot == members.size() && memberCount < TeamsMainGui.TEAM_SIZE_LIMIT) {
                 player.closeInventory();
                 player.sendMessage("§7Type the player name after the command to invite them.");
 
@@ -262,48 +246,14 @@ public final class TeamsGuiListener implements Listener {
         }
 
         switch (slot) {
-            case 46 -> {
+            case 45 -> {
                 TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
                 TeamGuiSession.setSort(player.getUniqueId(), next);
                 TeamGuiSession.setPage(player.getUniqueId(), 0);
                 TeamsMainGui.open(core, player, teamService, inviteService);
             }
 
-            case 48 -> {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage(core.getMessage("teams.management.no-permission"));
-                    return;
-                }
-
-                navigate(player, () -> TeamManageGui.open(core, player, teamService));
-            }
-
-            case 49 -> TeamsMainGui.open(core, player, teamService, inviteService);
-
-            case 50 -> {
-                int current = TeamGuiSession.getPage(player.getUniqueId());
-                int maxPage = Math.max(0, (members.size() - 1) / 45);
-
-                if (current < maxPage) {
-                    TeamGuiSession.setPage(player.getUniqueId(), current + 1);
-                }
-
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
-
-            case 51 -> {
-                if (teamService.isFounder(player.getUniqueId())) {
-                    player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "DISBAND:" + team.teamId()));
-                    player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    navigate(player, () -> TeamConfirmGui.openDisband(player, team.name()));
-                } else {
-                    player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, "LEAVE:" + team.teamId()));
-                    player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    navigate(player, () -> TeamConfirmGui.openLeave(player, team.name()));
-                }
-            }
-
-            case 52 -> {
+            case 47 -> {
                 org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
 
                 if (home == null) {
@@ -325,14 +275,8 @@ public final class TeamsGuiListener implements Listener {
                 });
             }
 
-            case 53 -> {
-                if (teamService.isFounder(player.getUniqueId())) {
-                    navigate(player, () -> TeamBansGui.open(core, player, team.teamId(), banService, teamService));
-                    return;
-                }
-
+            case 48 -> {
                 if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage(core.getMessage("teams.pvp.no-permission"));
                     return;
                 }
 
@@ -340,6 +284,28 @@ public final class TeamsGuiListener implements Listener {
                 teamService.setFriendlyFire(team.teamId(), newValue);
                 player.sendMessage(newValue ? core.getMessage("teams.pvp.enabled") : core.getMessage("teams.pvp.disabled"));
                 TeamsMainGui.open(core, player, teamService, inviteService);
+            }
+
+            case 49 -> {
+                // Team Info item is informational for now.
+            }
+
+            case 50 -> {
+                if (!teamService.isAdmin(player.getUniqueId())) {
+                    player.sendMessage(core.getMessage("teams.management.no-permission"));
+                    return;
+                }
+
+                navigate(player, () -> TeamManageGui.open(core, player, teamService));
+            }
+
+            case 51 -> {
+                if (!teamService.isAdmin(player.getUniqueId())) {
+                    player.sendMessage(core.getMessage("teams.bans.no-permission"));
+                    return;
+                }
+
+                navigate(player, () -> TeamBansGui.open(core, player, team.teamId(), banService, teamService));
             }
 
             default -> {

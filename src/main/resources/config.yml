@@ -41,6 +41,11 @@ homes:
 
 teams:
   enabled: true
-  max-members: 25
+  max-members: 27
   default-role: member
   team-home-enabled: true
+
+  # When true, players must have this permission to create or join teams:
+  # mineacle.discord.linked
+  # Later, your Discord /link system should automatically grant this permission.
+  require-discord-link: false
