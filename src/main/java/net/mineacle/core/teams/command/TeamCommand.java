@@ -118,6 +118,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleCreate(Player player, String[] args) {
+        if (!canCreateOrJoinTeam(player, "create")) {
+            return true;
+        }
+
         if (args.length < 2) {
             player.sendMessage("§cUsage: /team create <name>");
             return true;
@@ -281,6 +285,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean handleAccept(Player player) {
+        if (!canCreateOrJoinTeam(player, "join")) {
+            return true;
+        }
+
         TeamInviteRecord invite = inviteService.getInvite(player.getUniqueId());
         if (invite == null) {
             player.sendMessage(core.getMessage("teams.invite.none"));
@@ -492,6 +500,28 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean canCreateOrJoinTeam(Player player, String action) {
+        boolean required = core.getConfig().getBoolean("teams.require-discord-link", false);
+        if (!required) {
+            return true;
+        }
+
+        if (player.hasPermission("mineacle.discord.linked")) {
+            return true;
+        }
+
+        if (action.equalsIgnoreCase("join")) {
+            player.sendActionBar(Component.text("§cLink Discord with /link to join a team"));
+            player.sendMessage("§cYou must link your Discord to join a team.");
+        } else {
+            player.sendActionBar(Component.text("§cLink Discord with /link to create a team"));
+            player.sendMessage("§cYou must link your Discord to create a team.");
+        }
+
+        player.sendMessage("§7Type §d/link §7to link your Discord and in-game profile.");
+        return false;
+    }
+
     private String joinArgs(String[] args, int startIndex) {
         StringBuilder builder = new StringBuilder();
         for (int i = startIndex; i < args.length; i++) {
@@ -513,7 +543,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "leave", "disband", "home", "sethome", "delhome", "bans", "unban", "chat", "manage")) {
+            for (String option : List.of("create", "invite", "accept", "deny", "invites", "leave", "disband", "home", "sethome", "delhome", "bans", "unban", "chat", "manage")) {
                 if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
                     completions.add(option);
                 }
