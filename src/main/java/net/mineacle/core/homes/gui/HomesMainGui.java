@@ -85,7 +85,6 @@ public final class HomesMainGui {
 
         TeamService teamService = new TeamService(core);
         TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
-
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
@@ -94,15 +93,24 @@ public final class HomesMainGui {
                     item(
                             Material.LIGHT_GRAY_BANNER,
                             "&7No Team",
-                            List.of("&fYou are not in a team", "&7Use &d/team &7to get started")
+                            List.of(
+                                    "&fYou are not in a team",
+                                    "&7Type &d/team create <name>",
+                                    "&7to create a team."
+                            )
                     )
             );
+
             inventory.setItem(
                     dyeSlot,
                     item(
                             Material.GRAY_DYE,
                             "&7No Team",
-                            List.of("&fYou are not in a team", "&7Use &d/team &7to get started")
+                            List.of(
+                                    "&fYou are not in a team",
+                                    "&7Type &d/team create <name>",
+                                    "&7to create a team."
+                            )
                     )
             );
             return;
@@ -111,6 +119,7 @@ public final class HomesMainGui {
         boolean hasHome = teamHomeService.hasTeamHome(team.teamId());
         boolean isAdmin = teamService.isAdmin(player.getUniqueId());
         boolean isFounder = teamService.isFounder(player.getUniqueId());
+        String teamDisplay = teamService.formatTeamName(team);
 
         if (!hasHome) {
             if (isAdmin) {
@@ -119,15 +128,24 @@ public final class HomesMainGui {
                         item(
                                 Material.WHITE_BANNER,
                                 "&fTeam Home",
-                                List.of("&7Click to set &dTeam Home &7to your current location")
+                                List.of(
+                                        "&7Team: " + teamDisplay,
+                                        "&7Click to set &dTeam Home",
+                                        "&7to your current location."
+                                )
                         )
                 );
+
                 inventory.setItem(
                         dyeSlot,
                         item(
-                                Material.GRAY_DYE,
+                                Material.LIGHT_GRAY_DYE,
                                 "&fTeam Home",
-                                List.of("&7Click to set &dTeam Home &7to your current location")
+                                List.of(
+                                        "&7Team: " + teamDisplay,
+                                        "&7Click to set &dTeam Home",
+                                        "&7to your current location."
+                                )
                         )
                 );
             } else {
@@ -136,7 +154,24 @@ public final class HomesMainGui {
                         item(
                                 Material.LIGHT_GRAY_BANNER,
                                 "&7Team Home",
-                                List.of("&fYour team does not have a home yet", "&7Ask your &dteam owner &7to set Team Home")
+                                List.of(
+                                        "&7Team: " + teamDisplay,
+                                        "&fYour team does not have a home yet",
+                                        "&7Ask your &dteam owner &7to set Team Home"
+                                )
+                        )
+                );
+
+                inventory.setItem(
+                        dyeSlot,
+                        item(
+                                Material.GRAY_DYE,
+                                "&7Team Home",
+                                List.of(
+                                        "&7Team: " + teamDisplay,
+                                        "&fYour team does not have a home yet",
+                                        "&7Ask your &dteam owner &7to set Team Home"
+                                )
                         )
                 );
             }
@@ -146,9 +181,12 @@ public final class HomesMainGui {
         inventory.setItem(
                 bannerSlot,
                 item(
-                        Material.PURPLE_BANNER,
-                        "&dTeam Home",
-                        List.of("&fClick to teleport to &dTeam Home")
+                        team.bannerColor().bannerMaterial(),
+                        teamDisplay + " &dTeam Home",
+                        List.of(
+                                "&fClick to teleport to &dTeam Home",
+                                "&7Banner: &f" + team.bannerColor().displayName()
+                        )
                 )
         );
 
@@ -156,9 +194,24 @@ public final class HomesMainGui {
             inventory.setItem(
                     dyeSlot,
                     item(
-                            Material.PURPLE_DYE,
+                            team.bannerColor().dyeMaterial(),
                             "&cDelete Team Home",
-                            List.of("&fClick to delete &dTeam Home")
+                            List.of(
+                                    "&fClick to delete &dTeam Home",
+                                    "&7Team: " + teamDisplay
+                            )
+                    )
+            );
+        } else {
+            inventory.setItem(
+                    dyeSlot,
+                    item(
+                            Material.GRAY_DYE,
+                            "&7Team Home",
+                            List.of(
+                                    "&fYour team home is set.",
+                                    "&7Only the founder can delete it."
+                            )
                     )
             );
         }
@@ -167,6 +220,10 @@ public final class HomesMainGui {
     private static ItemStack item(Material material, String name, List<String> lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
 
         meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
         meta.setLore(lore.stream().map(line -> ChatColor.translateAlternateColorCodes('&', line)).toList());

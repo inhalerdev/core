@@ -46,11 +46,21 @@ public final class TeamChatService {
             return false;
         }
 
+        String teamName = teamService.formatTeamName(team);
+        String senderName = sender.getDisplayName() == null || sender.getDisplayName().isBlank()
+                ? sender.getName()
+                : sender.getDisplayName();
+
+        String rawFormat = core.getMessage("teams.chat.format");
+        if (rawFormat == null || rawFormat.equalsIgnoreCase("teams.chat.format")) {
+            rawFormat = "&8[%team%&8] &f%player%&8: &f%message%";
+        }
+
         String formatted = ChatColor.translateAlternateColorCodes(
                 '&',
-                core.getMessage("teams.chat.format")
-                        .replace("%team%", teamService.formatTeamName(team))
-                        .replace("%player%", sender.getName())
+                rawFormat
+                        .replace("%team%", teamName)
+                        .replace("%player%", senderName)
                         .replace("%message%", message)
         );
 
