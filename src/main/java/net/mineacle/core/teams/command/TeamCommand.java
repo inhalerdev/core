@@ -220,7 +220,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.teamSizeLimit(core)) {
             player.sendMessage("§cYour team is full.");
             return true;
         }
@@ -302,7 +302,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.TEAM_SIZE_LIMIT) {
+        if (teamService.getTeamMembers(team.teamId()).size() >= TeamsMainGui.teamSizeLimit(core)) {
             inviteService.denyInvite(player.getUniqueId());
             player.sendMessage("§cThat team is full.");
             return true;

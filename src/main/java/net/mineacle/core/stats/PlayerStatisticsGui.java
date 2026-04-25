@@ -19,6 +19,7 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -28,11 +29,12 @@ public final class PlayerStatisticsGui implements Listener {
     private static final int SIZE = 27;
 
     private static final int SLOT_HEAD = 4;
-    private static final int SLOT_KILLS = 10;
-    private static final int SLOT_DEATHS = 11;
-    private static final int SLOT_PLAYTIME = 12;
-    private static final int SLOT_BLOCKS_PLACED = 14;
-    private static final int SLOT_BLOCKS_BROKEN = 15;
+    private static final int SLOT_MONEY = 10;
+    private static final int SLOT_KILLS = 11;
+    private static final int SLOT_DEATHS = 12;
+    private static final int SLOT_PLAYTIME = 13;
+    private static final int SLOT_BLOCKS_BROKEN = 14;
+    private static final int SLOT_BLOCKS_PLACED = 15;
     private static final int SLOT_MOBS_KILLED = 16;
 
     private final Core core;
@@ -48,12 +50,21 @@ public final class PlayerStatisticsGui implements Listener {
 
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
 
-        inventory.setItem(SLOT_HEAD, playerHead(target, "&d" + displayName, "&7Viewing player statistics."));
+        inventory.setItem(SLOT_HEAD, playerHead(
+                target,
+                "&d" + displayName,
+                List.of(
+                        "&7Viewing player statistics.",
+                        "&7Player: &f" + displayName
+                )
+        ));
+
+        inventory.setItem(SLOT_MONEY, statItem(Material.EMERALD, "&aMoney", VaultStatsHook.balance(target)));
         inventory.setItem(SLOT_KILLS, statItem(Material.NETHERITE_SWORD, "&fKills", statisticValue(targetId, Statistic.PLAYER_KILLS)));
         inventory.setItem(SLOT_DEATHS, statItem(Material.SKELETON_SKULL, "&fDeaths", statisticValue(targetId, Statistic.DEATHS)));
         inventory.setItem(SLOT_PLAYTIME, statItem(Material.CLOCK, "&fPlaytime", playtimeValue(targetId)));
-        inventory.setItem(SLOT_BLOCKS_PLACED, statItem(Material.GRASS_BLOCK, "&fBlocks Placed", statisticValue(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)));
         inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(Material.COBBLESTONE, "&fBlocks Broken", statisticValue(targetId, Statistic.MINE_BLOCK, Material.STONE)));
+        inventory.setItem(SLOT_BLOCKS_PLACED, statItem(Material.GRASS_BLOCK, "&fBlocks Placed", statisticValue(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)));
         inventory.setItem(SLOT_MOBS_KILLED, statItem(Material.ZOMBIE_HEAD, "&fMobs Killed", statisticValue(targetId, Statistic.MOB_KILLS)));
 
         openTargets.put(viewer.getUniqueId(), targetId);
@@ -91,7 +102,7 @@ public final class PlayerStatisticsGui implements Listener {
         }
     }
 
-    private ItemStack playerHead(OfflinePlayer owner, String name, String lore) {
+    private ItemStack playerHead(OfflinePlayer owner, String name, List<String> lore) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         ItemMeta rawMeta = item.getItemMeta();
 
@@ -101,7 +112,7 @@ public final class PlayerStatisticsGui implements Listener {
 
         meta.setOwningPlayer(owner);
         meta.setDisplayName(color(name));
-        meta.setLore(java.util.List.of(color(lore)));
+        meta.setLore(lore.stream().map(this::color).toList());
         item.setItemMeta(meta);
         return item;
     }
@@ -112,7 +123,10 @@ public final class PlayerStatisticsGui implements Listener {
 
         if (meta != null) {
             meta.setDisplayName(color(name));
-            meta.setLore(java.util.List.of(color("&7Value: &f" + value)));
+            meta.setLore(List.of(
+                    color("&7Value: &f" + value),
+                    color("&8Statistics update while the player is online.")
+            ));
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
             stack.setItemMeta(meta);
         }
@@ -166,8 +180,11 @@ public final class PlayerStatisticsGui implements Listener {
 
     private String visibleName(UUID playerId) {
         Player online = Bukkit.getPlayer(playerId);
-        if (online != null && online.getDisplayName() != null && !ChatColor.stripColor(online.getDisplayName()).isBlank()) {
-            return ChatColor.stripColor(online.getDisplayName());
+        if (online != null && online.getDisplayName() != null) {
+            String stripped = ChatColor.stripColor(online.getDisplayName());
+            if (stripped != null && !stripped.isBlank()) {
+                return stripped;
+            }
         }
 
         OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerId);

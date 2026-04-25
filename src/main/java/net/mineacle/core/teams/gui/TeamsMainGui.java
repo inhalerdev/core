@@ -23,7 +23,8 @@ import java.util.UUID;
 
 public final class TeamsMainGui {
 
-    public static final int TEAM_SIZE_LIMIT = 27;
+    private static final int DEFAULT_TEAM_SIZE_LIMIT = 27;
+    private static final int MAX_ROSTER_GUI_SLOTS = 45;
 
     public static String NO_TEAM_TITLE(Core core) {
         return color(core.getMessage("teams.gui.no-team-title"));
@@ -31,6 +32,14 @@ public final class TeamsMainGui {
 
     public static String TEAM_TITLE(Core core) {
         return color(core.getMessage("teams.gui.team-title"));
+    }
+
+    public static int teamSizeLimit(Core core) {
+        return Math.max(1, core.getConfig().getInt("teams.max-members", DEFAULT_TEAM_SIZE_LIMIT));
+    }
+
+    public static int maxRosterGuiSlots() {
+        return MAX_ROSTER_GUI_SLOTS;
     }
 
     private TeamsMainGui() {
@@ -81,14 +90,16 @@ public final class TeamsMainGui {
     private static void openTeamMenu(Core core, Player player, TeamService teamService, TeamRecord team) {
         TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
         List<UUID> members = teamService.getSortedTeamMembers(team.teamId(), sortType);
-        int memberCount = teamService.getTeamMembers(team.teamId()).size();
 
-        String title = team.name() + ChatColor.GRAY + " (" + memberCount + "/" + TEAM_SIZE_LIMIT + ")";
+        int memberCount = teamService.getTeamMembers(team.teamId()).size();
+        int teamLimit = teamSizeLimit(core);
+
+        String title = team.name() + ChatColor.GRAY + " (" + memberCount + "/" + teamLimit + ")";
         Inventory inventory = Bukkit.createInventory(null, 54, title);
 
         int guiSlot = 0;
         for (UUID memberId : members) {
-            if (guiSlot >= 45) {
+            if (guiSlot >= MAX_ROSTER_GUI_SLOTS) {
                 break;
             }
 
@@ -103,14 +114,14 @@ public final class TeamsMainGui {
                     "&f" + name,
                     List.of(
                             "&7Role: &d" + role,
-                            "&7Click to view statistics."
+                            "&7Click to manage this member."
                     )
             ));
 
             guiSlot++;
         }
 
-        if (teamService.isAdmin(player.getUniqueId()) && memberCount < TEAM_SIZE_LIMIT && guiSlot < 45) {
+        if (teamService.isAdmin(player.getUniqueId()) && memberCount < teamLimit && guiSlot < MAX_ROSTER_GUI_SLOTS) {
             inventory.setItem(guiSlot, item(
                     Material.LIME_STAINED_GLASS_PANE,
                     "&aInvite Player",
@@ -155,7 +166,7 @@ public final class TeamsMainGui {
                 List.of(
                         "&fTeam: " + teamService.formatTeamName(team),
                         "&fLeader: &d" + leaderName,
-                        "&fMembers: &d" + memberCount + "&7/" + TEAM_SIZE_LIMIT,
+                        "&fMembers: &d" + memberCount + "&7/" + teamLimit,
                         "&fSort: &d" + sortType.displayName()
                 )
         ));
