@@ -82,35 +82,55 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         String sub = args[0].toLowerCase(Locale.ROOT);
 
+        if (blockNoTeamCommand(player, sub)) {
+            return true;
+        }
+
         switch (sub) {
             case "create":
                 return handleCreate(player, args);
+
             case "leave":
                 return handleLeave(player);
+
             case "disband":
                 return handleDisband(player);
+
             case "invite":
                 return handleInvite(player, args);
+
             case "accept":
+            case "join":
                 return handleAccept(player);
+
             case "deny":
+            case "decline":
                 return handleDeny(player);
+
             case "invites":
                 return handleInvites(player);
+
             case "home":
                 return handleHome(player);
+
             case "sethome":
                 return handleSetHome(player);
+
             case "delhome":
                 return handleDeleteHome(player);
+
             case "bans":
                 return handleBans(player);
+
             case "unban":
                 return handleUnban(player, args);
+
             case "chat":
                 return handleTeamChatSubcommand(player, args);
+
             case "manage":
                 return handleManage(player);
+
             default:
                 player.sendMessage("§cUnknown subcommand.");
                 return true;
@@ -157,6 +177,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         TeamRecord created = teamService.getTeamByPlayer(player.getUniqueId());
         String teamDisplay = created == null ? teamName : teamService.formatTeamName(created);
+
         player.sendMessage(core.getMessage("teams.created").replace("%team%", teamDisplay));
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
@@ -177,6 +198,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         teamService.removeMember(player.getUniqueId());
         teamChatService.clear(player.getUniqueId());
         TeamGuiSession.clear(player.getUniqueId());
+
         player.sendMessage(core.getMessage("teams.left-team"));
         return true;
     }
@@ -320,7 +342,9 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         TeamRecord joined = teamService.getTeamByPlayer(player.getUniqueId());
-        player.sendMessage(core.getMessage("teams.invite.accepted").replace("%team%", joined == null ? team.name() : teamService.formatTeamName(joined)));
+        player.sendMessage(core.getMessage("teams.invite.accepted")
+                .replace("%team%", joined == null ? team.name() : teamService.formatTeamName(joined)));
+
         TeamsMainGui.open(core, player, teamService, inviteService);
         return true;
     }
@@ -354,6 +378,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             player.teleport(home);
             player.sendMessage(core.getMessage("teams.home.teleported"));
         });
+
         return true;
     }
 
@@ -500,6 +525,25 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    private boolean blockNoTeamCommand(Player player, String subcommand) {
+        if (teamService.hasTeam(player.getUniqueId())) {
+            return false;
+        }
+
+        if (subcommand.equalsIgnoreCase("create")
+                || subcommand.equalsIgnoreCase("join")
+                || subcommand.equalsIgnoreCase("accept")
+                || subcommand.equalsIgnoreCase("deny")
+                || subcommand.equalsIgnoreCase("decline")
+                || subcommand.equalsIgnoreCase("invites")) {
+            return false;
+        }
+
+        player.sendMessage(core.getMessage("teams.no-team"));
+        TeamsMainGui.open(core, player, teamService, inviteService);
+        return true;
+    }
+
     private boolean canCreateOrJoinTeam(Player player, String action) {
         boolean required = core.getConfig().getBoolean("teams.require-discord-link", false);
         if (!required) {
@@ -524,12 +568,15 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private String joinArgs(String[] args, int startIndex) {
         StringBuilder builder = new StringBuilder();
+
         for (int i = startIndex; i < args.length; i++) {
             if (i > startIndex) {
                 builder.append(' ');
             }
+
             builder.append(args[i]);
         }
+
         return builder.toString().trim();
     }
 
@@ -542,18 +589,54 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return completions;
         }
 
+        if (!(sender instanceof Player player)) {
+            return completions;
+        }
+
         if (args.length == 1) {
-            for (String option : List.of("create", "invite", "accept", "deny", "invites", "leave", "disband", "home", "sethome", "delhome", "bans", "unban", "chat", "manage")) {
-                if (option.startsWith(args[0].toLowerCase(Locale.ROOT))) {
+            boolean hasTeam = teamService.hasTeam(player.getUniqueId());
+            boolean hasInvite = inviteService.hasInvite(player.getUniqueId());
+
+            List<String> options;
+
+            if (!hasTeam) {
+                options = hasInvite
+                        ? List.of("create", "join", "accept", "deny", "decline", "invites")
+                        : List.of("create", "invites");
+            } else {
+                options = teamService.isAdmin(player.getUniqueId())
+                        ? List.of("invite", "home", "sethome", "delhome", "chat", "manage", "bans", "unban", "leave", "disband")
+                        : List.of("home", "chat", "leave");
+            }
+
+            String partial = args[0].toLowerCase(Locale.ROOT);
+            for (String option : options) {
+                if (option.startsWith(partial)) {
                     completions.add(option);
                 }
             }
+
             return completions;
         }
 
         if (args.length == 2 && args[0].equalsIgnoreCase("invite")) {
+            TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
+            if (team == null || !teamService.isAdmin(player.getUniqueId())) {
+                return completions;
+            }
+
             String partial = args[1].toLowerCase(Locale.ROOT);
+
             for (Player online : Bukkit.getOnlinePlayers()) {
+                if (online.getUniqueId().equals(player.getUniqueId())) {
+                    continue;
+                }
+
+                if (teamService.hasTeam(online.getUniqueId())) {
+                    continue;
+                }
+
                 if (online.getName().toLowerCase(Locale.ROOT).startsWith(partial)) {
                     completions.add(online.getName());
                 }

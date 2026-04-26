@@ -474,7 +474,11 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.promote-founder-only"));
                     return;
                 }
-                startConfirm(player, "PROMOTE:" + targetId);
+                handleDoubleClickConfirm(player, "PROMOTE:" + targetId, () -> {
+                    teamService.setMemberRole(targetId, TeamRole.ADMIN);
+                    player.sendMessage(core.getMessage("teams.management.promoted"));
+                    TeamMemberManageGui.open(core, player, targetId, teamService);
+                });
             }
 
             case 11 -> {
@@ -482,7 +486,11 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.demote-founder-only"));
                     return;
                 }
-                startConfirm(player, "DEMOTE:" + targetId);
+                handleDoubleClickConfirm(player, "DEMOTE:" + targetId, () -> {
+                    teamService.setMemberRole(targetId, TeamRole.MEMBER);
+                    player.sendMessage(core.getMessage("teams.management.demoted"));
+                    TeamMemberManageGui.open(core, player, targetId, teamService);
+                });
             }
 
             case 12 -> {
@@ -490,7 +498,11 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.cannot-kick-target"));
                     return;
                 }
-                startConfirm(player, "KICK:" + targetId);
+                handleDoubleClickConfirm(player, "KICK:" + targetId, () -> {
+                    teamService.removeMember(targetId);
+                    player.sendMessage(core.getMessage("teams.management.kicked"));
+                    TeamsMainGui.open(core, player, teamService, inviteService);
+                });
             }
 
             case 13 -> playerStatisticsGui.open(player, targetId);
@@ -500,7 +512,18 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.cannot-kick-target"));
                     return;
                 }
-                startConfirm(player, "BAN:" + targetId);
+                handleDoubleClickConfirm(player, "BAN:" + targetId, () -> {
+                    TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+                    if (team == null) {
+                        player.closeInventory();
+                        return;
+                    }
+
+                    banService.banForDefaultDuration(team.teamId(), targetId, player.getUniqueId());
+                    teamService.removeMember(targetId);
+                    player.sendMessage(core.getMessage("teams.management.kicked"));
+                    TeamsMainGui.open(core, player, teamService, inviteService);
+                });
             }
 
             case 16 -> {
@@ -508,7 +531,13 @@ public final class TeamsGuiListener implements Listener {
                     player.sendMessage(core.getMessage("teams.management.transfer-founder-only"));
                     return;
                 }
-                startConfirm(player, "TRANSFER:" + targetId);
+                handleDoubleClickConfirm(player, "TRANSFER:" + targetId, () -> {
+                    TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+                    if (team != null && teamService.transferFounder(team.teamId(), player.getUniqueId(), targetId)) {
+                        player.sendMessage(core.getMessage("teams.management.transfer-success"));
+                        TeamsMainGui.open(core, player, teamService, inviteService);
+                    }
+                });
             }
 
             default -> {
@@ -516,9 +545,23 @@ public final class TeamsGuiListener implements Listener {
         }
     }
 
-    private void startConfirm(Player player, String action) {
+    private void handleDoubleClickConfirm(Player player, String action, Runnable confirmedAction) {
+        String currentAction = player.hasMetadata(META_TEAM_ACTION)
+                ? player.getMetadata(META_TEAM_ACTION).get(0).asString()
+                : "";
+
+        boolean currentlyConfirmed = player.hasMetadata(META_TEAM_CONFIRM)
+                && player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
+
+        if (currentAction.equals(action) && currentlyConfirmed) {
+            clearConfirmMeta(player);
+            confirmedAction.run();
+            return;
+        }
+
         player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, action));
-        player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
+        player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, true));
+
         player.sendActionBar(Component.text(core.getMessage("teams.gui.click-again")));
         player.sendMessage(core.getMessage("teams.gui.click-again"));
 
@@ -531,10 +574,10 @@ public final class TeamsGuiListener implements Listener {
                 return;
             }
 
-            String currentAction = player.getMetadata(META_TEAM_ACTION).get(0).asString();
-            boolean currentConfirmed = player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
+            String laterAction = player.getMetadata(META_TEAM_ACTION).get(0).asString();
+            boolean laterConfirmed = player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
 
-            if (currentAction.equals(action) && !currentConfirmed) {
+            if (laterAction.equals(action) && laterConfirmed) {
                 clearConfirmMeta(player);
                 player.sendActionBar(Component.text(core.getMessage("teams.gui.action-timeout")));
                 player.sendMessage(core.getMessage("teams.gui.action-timeout"));
@@ -552,7 +595,16 @@ public final class TeamsGuiListener implements Listener {
         boolean confirmed = player.hasMetadata(META_TEAM_CONFIRM)
                 && player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
 
-        if (slot != 10 && slot != 11 && slot != 12 && slot != 14 && slot != 16 && slot != 15) {
+        if (slot == 11) {
+            clearConfirmMeta(player);
+            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+
+            player.sendActionBar(Component.text(core.getMessage("teams.gui.action-cancelled")));
+            player.sendMessage(core.getMessage("teams.gui.action-cancelled"));
+            return;
+        }
+
+        if (slot != 15) {
             return;
         }
 
@@ -560,61 +612,30 @@ public final class TeamsGuiListener implements Listener {
             player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, true));
             player.sendActionBar(Component.text(core.getMessage("teams.gui.click-again")));
             player.sendMessage(core.getMessage("teams.gui.click-again"));
+
+            core.getServer().getScheduler().runTaskLater(core, () -> {
+                if (!player.isOnline()) {
+                    return;
+                }
+
+                if (!player.hasMetadata(META_TEAM_ACTION) || !player.hasMetadata(META_TEAM_CONFIRM)) {
+                    return;
+                }
+
+                String currentAction = player.getMetadata(META_TEAM_ACTION).get(0).asString();
+                boolean currentConfirmed = player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
+
+                if (currentAction.equals(actionValue) && currentConfirmed) {
+                    player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
+                    player.sendActionBar(Component.text(core.getMessage("teams.gui.action-timeout")));
+                    player.sendMessage(core.getMessage("teams.gui.action-timeout"));
+                }
+            }, 20L * 5);
+
             return;
         }
 
         clearConfirmMeta(player);
-
-        String[] split = actionValue.split(":", 2);
-        if (split.length != 2) {
-            return;
-        }
-
-        String action = split[0];
-        UUID targetId = UUID.fromString(split[1]);
-
-        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-        if (team == null) {
-            player.closeInventory();
-            return;
-        }
-
-        switch (action) {
-            case "PROMOTE" -> {
-                teamService.setMemberRole(targetId, TeamRole.ADMIN);
-                player.sendMessage(core.getMessage("teams.management.promoted"));
-                TeamMemberManageGui.open(core, player, targetId, teamService);
-            }
-
-            case "DEMOTE" -> {
-                teamService.setMemberRole(targetId, TeamRole.MEMBER);
-                player.sendMessage(core.getMessage("teams.management.demoted"));
-                TeamMemberManageGui.open(core, player, targetId, teamService);
-            }
-
-            case "KICK" -> {
-                teamService.removeMember(targetId);
-                player.sendMessage(core.getMessage("teams.management.kicked"));
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
-
-            case "BAN" -> {
-                banService.banForDefaultDuration(team.teamId(), targetId, player.getUniqueId());
-                teamService.removeMember(targetId);
-                player.sendMessage(core.getMessage("teams.management.kicked"));
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
-
-            case "TRANSFER" -> {
-                if (teamService.transferFounder(team.teamId(), player.getUniqueId(), targetId)) {
-                    player.sendMessage(core.getMessage("teams.management.transfer-success"));
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                }
-            }
-
-            default -> {
-            }
-        }
     }
 
     private void navigate(Player player, Runnable openAction) {
@@ -631,6 +652,22 @@ public final class TeamsGuiListener implements Listener {
 
             Bukkit.getScheduler().runTaskLater(core, () -> navigating.remove(uuid), 2L);
         });
+    }
+
+    private void openPreviousMenu(Player player, Runnable openAction) {
+        UUID uuid = player.getUniqueId();
+        navigating.add(uuid);
+
+        Bukkit.getScheduler().runTaskLater(core, () -> {
+            if (!player.isOnline()) {
+                navigating.remove(uuid);
+                return;
+            }
+
+            openAction.run();
+
+            Bukkit.getScheduler().runTaskLater(core, () -> navigating.remove(uuid), 3L);
+        }, 1L);
     }
 
     private void clearConfirmMeta(Player player) {
