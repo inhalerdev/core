@@ -181,11 +181,11 @@ public final class HomesMainGui {
         inventory.setItem(
                 bannerSlot,
                 item(
-                        team.bannerColor().bannerMaterial(),
+                        Material.PURPLE_BANNER,
                         teamDisplay + " &dTeam Home",
                         List.of(
                                 "&fClick to teleport to &dTeam Home",
-                                "&7Banner: &f" + team.bannerColor().displayName()
+                                "&7Banner: &f" + "Purple"
                         )
                 )
         );
@@ -194,7 +194,7 @@ public final class HomesMainGui {
             inventory.setItem(
                     dyeSlot,
                     item(
-                            team.bannerColor().dyeMaterial(),
+                            Material.PURPLE_DYE,
                             "&cDelete Team Home",
                             List.of(
                                     "&fClick to delete &dTeam Home",

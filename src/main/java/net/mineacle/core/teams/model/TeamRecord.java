@@ -6,8 +6,6 @@ public record TeamRecord(
         String teamId,
         String name,
         UUID founder,
-        boolean friendlyFire,
-        TeamBannerColor bannerColor,
-        String nameColor
+        boolean friendlyFire
 ) {
 }

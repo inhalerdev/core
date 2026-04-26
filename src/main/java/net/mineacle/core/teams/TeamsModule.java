@@ -3,33 +3,21 @@ package net.mineacle.core.teams;
 import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.service.TeleportService;
-import net.mineacle.core.stats.PlayerStatisticsGui;
-import net.mineacle.core.stats.StatsCommand;
 import net.mineacle.core.teams.command.TeamCommand;
-import net.mineacle.core.teams.listener.TeamChatListener;
-import net.mineacle.core.teams.listener.TeamSignListener;
+import net.mineacle.core.teams.listener.TeamCombatListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
-import net.mineacle.core.teams.service.TeamBanService;
-import net.mineacle.core.teams.service.TeamChatService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
-import net.mineacle.core.teams.sign.TeamSignService;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.PluginCommand;
-import org.bukkit.command.TabCompleter;
 
 public final class TeamsModule extends Module {
 
     private Core core;
     private TeamService teamService;
-    private TeamBanService banService;
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
-    private TeamChatService teamChatService;
     private TeleportService teleportService;
-    private TeamSignService teamSignService;
-    private PlayerStatisticsGui playerStatisticsGui;
 
     @Override
     public String name() {
@@ -39,51 +27,37 @@ public final class TeamsModule extends Module {
     @Override
     public void enable(Core core) {
         this.core = core;
-        this.teamService = new TeamService(core);
-        this.banService = new TeamBanService(core);
-        this.inviteService = new TeamInviteService(core, teamService, banService);
-        this.teamHomeService = new TeamHomeService(core, teamService);
-        this.teamChatService = new TeamChatService(core, teamService);
-        this.teleportService = new TeleportService(core);
-        this.teamSignService = new TeamSignService(core);
-        this.playerStatisticsGui = new PlayerStatisticsGui(core);
 
-        TeamCommand teamCommand = new TeamCommand(
+        this.teamService = new TeamService(core);
+        this.inviteService = new TeamInviteService(teamService);
+        this.teamHomeService = new TeamHomeService(core, teamService);
+        this.teleportService = new TeleportService(core);
+
+        TeamCommand command = new TeamCommand(
                 core,
                 teamService,
-                banService,
                 inviteService,
                 teamHomeService,
-                teamChatService,
                 teleportService
         );
 
-        registerCommand("team", teamCommand, teamCommand);
-        registerCommand("teamchat", teamCommand, teamCommand);
-
-        PluginCommand statsCommand = core.getCommand("stats");
-        if (statsCommand != null) {
-            statsCommand.setExecutor(new StatsCommand(core, playerStatisticsGui));
+        PluginCommand team = core.getCommand("team");
+        if (team != null) {
+            team.setExecutor(command);
+            team.setTabCompleter(command);
         } else {
-            core.getLogger().warning("Missing command in plugin.yml: stats");
+            core.getLogger().warning("Missing command in plugin.yml: team");
         }
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, banService, inviteService, teamHomeService, teleportService, playerStatisticsGui),
+                new TeamsGuiListener(core, teamService, inviteService, teamHomeService, teleportService),
                 core
         );
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamChatListener(teamChatService),
+                new TeamCombatListener(teamService),
                 core
         );
-
-        core.getServer().getPluginManager().registerEvents(
-                new TeamSignListener(core, teamService, banService, inviteService, teamSignService),
-                core
-        );
-
-        core.getServer().getPluginManager().registerEvents(playerStatisticsGui, core);
     }
 
     @Override
@@ -91,16 +65,5 @@ public final class TeamsModule extends Module {
         if (core != null) {
             core.saveTeamsFile();
         }
-    }
-
-    private void registerCommand(String name, CommandExecutor executor, TabCompleter completer) {
-        PluginCommand command = core.getCommand(name);
-        if (command == null) {
-            core.getLogger().warning("Missing command in plugin.yml: " + name);
-            return;
-        }
-
-        command.setExecutor(executor);
-        command.setTabCompleter(completer);
     }
 }

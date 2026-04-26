@@ -27,16 +27,7 @@ commands:
     permission: mineaclehomes.admin
 
   team:
-    description: Open your team menu
-    permission: mineacleteams.use
-
-  teamchat:
-    description: Send a message to team chat
-    aliases: [tc]
-    permission: mineacleteams.use
-
-  stats:
-    description: Open player statistics
+    description: Create, join, and manage your team
     permission: mineacleteams.use
 
 permissions:
@@ -54,6 +45,3 @@ permissions:
 
   mineacleteams.admin:
     default: op
-
-  mineacle.discord.linked:
-    default: false

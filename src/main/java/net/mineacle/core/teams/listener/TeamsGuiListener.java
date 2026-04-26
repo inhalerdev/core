@@ -4,24 +4,13 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
-import net.mineacle.core.stats.PlayerStatisticsGui;
-import net.mineacle.core.teams.gui.TeamBannerColorGui;
-import net.mineacle.core.teams.gui.TeamBansGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
-import net.mineacle.core.teams.gui.TeamGuiSession;
 import net.mineacle.core.teams.gui.TeamInviteGui;
-import net.mineacle.core.teams.gui.TeamManageGui;
-import net.mineacle.core.teams.gui.TeamMemberManageGui;
-import net.mineacle.core.teams.gui.TeamNameColorGui;
+import net.mineacle.core.teams.gui.TeamMemberGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
-import net.mineacle.core.teams.model.TeamBanRecord;
-import net.mineacle.core.teams.model.TeamBannerColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
-import net.mineacle.core.teams.model.TeamNameColor;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
-import net.mineacle.core.teams.model.TeamSortType;
-import net.mineacle.core.teams.service.TeamBanService;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
@@ -31,48 +20,34 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.metadata.FixedMetadataValue;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class TeamsGuiListener implements Listener {
 
-    private static final String META_TEAM_ACTION = "mt_action";
-    private static final String META_TEAM_CONFIRM = "mt_confirm";
-    private static final String META_MANAGE_TARGET = "mt_manage_target";
+    private static final String META_TARGET = "simple_team_target";
+    private static final String META_ACTION = "simple_team_action";
 
     private final Core core;
     private final TeamService teamService;
-    private final TeamBanService banService;
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
     private final TeleportService teleportService;
-    private final PlayerStatisticsGui playerStatisticsGui;
-
-    private final Set<UUID> navigating = ConcurrentHashMap.newKeySet();
 
     public TeamsGuiListener(
             Core core,
             TeamService teamService,
-            TeamBanService banService,
             TeamInviteService inviteService,
             TeamHomeService teamHomeService,
-            TeleportService teleportService,
-            PlayerStatisticsGui playerStatisticsGui
+            TeleportService teleportService
     ) {
         this.core = core;
         this.teamService = teamService;
-        this.banService = banService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
         this.teleportService = teleportService;
-        this.playerStatisticsGui = playerStatisticsGui;
     }
 
     @EventHandler
@@ -81,526 +56,192 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        int topSize = event.getView().getTopInventory().getSize();
         int slot = event.getRawSlot();
+        int topSize = event.getView().getTopInventory().getSize();
 
         if (slot < 0 || slot >= topSize) {
             return;
         }
 
-        String title = cleanTitle(event.getView().getTitle());
-
-        if (title.equals(cleanTitle(TeamsMainGui.NO_TEAM_TITLE(core)))) {
-            event.setCancelled(true);
-            handleNoTeamClick(player, slot);
+        String title = ChatColor.stripColor(event.getView().getTitle());
+        if (title == null) {
             return;
         }
 
-        if (title.equals("team manage") || title.equals(cleanTitle(TeamManageGui.TITLE(core)))) {
+        if (title.startsWith(TeamsMainGui.TITLE_PREFIX)) {
             event.setCancelled(true);
-            handleManageGuiClick(player, slot);
+            handleMainClick(player, slot);
             return;
         }
 
-        if (title.equals("banner color") || title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))) {
+        if (title.equals(ChatColor.stripColor(TeamInviteGui.TITLE))) {
             event.setCancelled(true);
-            handleBannerColorGuiClick(player, slot);
+            handleInviteClick(player, slot);
             return;
         }
 
-        if (title.equals("name color") || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
+        if (title.startsWith(TeamMemberGui.TITLE_PREFIX)) {
             event.setCancelled(true);
-            handleNameColorGuiClick(player, slot);
+            handleMemberClick(player, slot);
             return;
         }
 
-        if (title.equals(cleanTitle(TeamInviteGui.TITLE(core)))) {
-            event.setCancelled(true);
-            handleInviteGuiClick(player, slot);
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamBansGui.TITLE(core)))) {
-            event.setCancelled(true);
-            handleBansGuiClick(player, slot);
-            return;
-        }
-
-        if (TeamMemberManageGui.isTitle(event.getView().getTitle())) {
-            event.setCancelled(true);
-            handleManageMemberClick(player, slot);
-            return;
-        }
-
-        if (title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
+        if (title.equals(ChatColor.stripColor(TeamConfirmGui.TITLE))) {
             event.setCancelled(true);
             handleConfirmClick(player, slot);
-            return;
-        }
-
-        if (teamService.getTeamByPlayer(player.getUniqueId()) != null && topSize == 54) {
-            event.setCancelled(true);
-            handleMainTeamClick(player, slot);
         }
     }
 
-    @EventHandler
-    public void onInventoryClose(InventoryCloseEvent event) {
-        if (!(event.getPlayer() instanceof Player player)) {
-            return;
-        }
-
-        UUID uuid = player.getUniqueId();
-
-        if (navigating.remove(uuid)) {
-            return;
-        }
-
-        String title = cleanTitle(event.getView().getTitle());
-
-        if (title.equals("banner color")
-                || title.equals("name color")
-                || title.equals(cleanTitle(TeamBannerColorGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamNameColorGui.TITLE(core)))) {
-            openPreviousMenu(player, () -> {
-                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null && teamService.isAdmin(uuid)) {
-                    TeamManageGui.open(core, player, teamService);
-                }
-            });
-            return;
-        }
-
-        if (title.equals("team manage")
-                || title.equals(cleanTitle(TeamManageGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamBansGui.TITLE(core)))
-                || title.equals(cleanTitle(TeamInviteGui.TITLE(core)))
-                || TeamMemberManageGui.isTitle(event.getView().getTitle())
-                || title.equals(cleanTitle(TeamConfirmGui.LEAVE_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DISBAND_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.DELETE_HOME_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.KICK_TITLE))
-                || title.equals(cleanTitle(TeamConfirmGui.TRANSFER_TITLE))) {
-            openPreviousMenu(player, () -> {
-                if (player.isOnline() && teamService.getTeamByPlayer(uuid) != null) {
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                }
-            });
-        }
-    }
-
-    private void handleNoTeamClick(Player player, int slot) {
-        if (slot == 15 && inviteService.hasInvite(player.getUniqueId())) {
-            navigate(player, () -> TeamInviteGui.open(core, player, inviteService, teamService));
-            return;
-        }
-
-        if (slot == 15) {
-            player.closeInventory();
-
-            String message = "§cYou have no current team invites.";
-            player.sendActionBar(Component.text(message));
-            player.sendMessage(message);
-            return;
-        }
-
-        if (slot == 11 || slot == 13) {
-            player.closeInventory();
-            Bukkit.getScheduler().runTaskLater(core, () -> sendCreateTeamPrompt(player), 1L);
-        }
-    }
-
-    private void handleMainTeamClick(Player player, int slot) {
+    private void handleMainClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
             player.closeInventory();
             return;
         }
 
-        TeamSortType sortType = TeamGuiSession.getSort(player.getUniqueId());
-        List<UUID> members = new ArrayList<>(teamService.getSortedTeamMembers(team.teamId(), sortType));
-        int memberCount = teamService.getTeamMembers(team.teamId()).size();
+        List<UUID> members = teamService.getTeamMembers(team.teamId());
 
-        if (slot >= 0 && slot < TeamsMainGui.maxRosterGuiSlots()) {
+        if (slot >= 0 && slot < 45) {
             if (slot < members.size()) {
                 UUID targetId = members.get(slot);
-                player.setMetadata(META_MANAGE_TARGET, new FixedMetadataValue(core, targetId.toString()));
-                navigate(player, () -> TeamMemberManageGui.open(core, player, targetId, teamService));
+                player.setMetadata(META_TARGET, new FixedMetadataValue(core, targetId.toString()));
+                TeamMemberGui.open(player, targetId, teamService);
                 return;
             }
 
             if (teamService.isAdmin(player.getUniqueId())
                     && slot == members.size()
-                    && memberCount < TeamsMainGui.teamSizeLimit(core)) {
+                    && members.size() < teamService.maxMembers()) {
                 player.closeInventory();
-                player.sendMessage("§7Type the player name after the command to invite them.");
+                player.sendMessage("§7Click to autofill: §d/team invite <player>");
 
-                Component clickable = Component.text("§d/team invite ")
+                Component suggest = Component.text("§d/team invite ")
                         .clickEvent(ClickEvent.suggestCommand("/team invite "));
 
-                player.sendMessage(clickable);
+                player.sendMessage(suggest);
+            }
+
+            return;
+        }
+
+        if (slot == 47) {
+            org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
+
+            if (home == null) {
+                if (!teamService.isAdmin(player.getUniqueId())) {
+                    player.sendMessage("§cYour team does not have a home set.");
+                    return;
+                }
+
+                teamHomeService.setTeamHome(team.teamId(), player.getLocation());
+                player.sendMessage("§aTeam home set.");
+                TeamsMainGui.open(core, player, teamService, inviteService);
                 return;
             }
 
+            player.closeInventory();
+            teleportService.begin(player, "Team Home", () -> {
+                player.teleport(home);
+                player.sendMessage("§aTeleported to Team Home.");
+            });
             return;
         }
 
-        switch (slot) {
-            case 45 -> {
-                TeamSortType next = TeamGuiSession.getSort(player.getUniqueId()).next();
-                TeamGuiSession.setSort(player.getUniqueId(), next);
-                TeamGuiSession.setPage(player.getUniqueId(), 0);
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
+        if (slot == 51 && teamService.isAdmin(player.getUniqueId())) {
+            boolean newValue = !team.friendlyFire();
+            teamService.setFriendlyFire(team.teamId(), newValue);
+            player.sendMessage(newValue ? "§aFriendly fire enabled." : "§cFriendly fire disabled.");
+            TeamsMainGui.open(core, player, teamService, inviteService);
+            return;
+        }
 
-            case 47 -> {
-                org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
-
-                if (home == null) {
-                    if (!teamService.isAdmin(player.getUniqueId())) {
-                        player.sendMessage(core.getMessage("teams.home.no-home"));
-                        return;
-                    }
-
-                    teamHomeService.setTeamHome(team.teamId(), player.getLocation());
-                    player.sendMessage(core.getMessage("teams.home.set"));
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                    return;
-                }
-
-                player.closeInventory();
-                teleportService.begin(player, "Team Home", () -> {
-                    player.teleport(home);
-                    player.sendMessage(core.getMessage("teams.home.teleported"));
-                });
-            }
-
-            case 48 -> {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    return;
-                }
-
-                boolean newValue = !team.friendlyFire();
-                teamService.setFriendlyFire(team.teamId(), newValue);
-                player.sendMessage(newValue ? core.getMessage("teams.pvp.enabled") : core.getMessage("teams.pvp.disabled"));
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            }
-
-            case 49 -> {
-                // Team Info is informational.
-            }
-
-            case 50 -> {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage(core.getMessage("teams.management.no-permission"));
-                    return;
-                }
-
-                navigate(player, () -> TeamManageGui.open(core, player, teamService));
-            }
-
-            case 51 -> {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage(core.getMessage("teams.bans.no-permission"));
-                    return;
-                }
-
-                navigate(player, () -> TeamBansGui.open(core, player, team.teamId(), banService, teamService));
-            }
-
-            default -> {
+        if (slot == 53) {
+            if (teamService.isFounder(player.getUniqueId())) {
+                player.setMetadata(META_ACTION, new FixedMetadataValue(core, "DISBAND"));
+                TeamConfirmGui.open(player, "Disband Team");
+            } else {
+                player.setMetadata(META_ACTION, new FixedMetadataValue(core, "LEAVE"));
+                TeamConfirmGui.open(player, "Leave Team");
             }
         }
     }
 
-    private void handleManageGuiClick(Player player, int slot) {
-        if (!teamService.isAdmin(player.getUniqueId())) {
-            player.closeInventory();
-            player.sendMessage(core.getMessage("teams.management.no-permission"));
-            return;
-        }
-
-        if (slot == 10) {
-            navigate(player, () -> TeamBannerColorGui.open(core, player));
-            return;
-        }
-
-        if (slot == 12) {
-            navigate(player, () -> TeamNameColorGui.open(core, player));
-            return;
-        }
-
-        if (slot == 16) {
-            TeamManageGui.open(core, player, teamService);
-        }
-    }
-
-    private void handleBannerColorGuiClick(Player player, int slot) {
-        TeamBannerColor color = TeamBannerColorGui.fromSlot(slot);
-        if (color == null) {
-            return;
-        }
-
-        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-        if (team == null) {
-            player.closeInventory();
-            return;
-        }
-
-        if (!teamService.isAdmin(player.getUniqueId())) {
-            player.closeInventory();
-            player.sendMessage(core.getMessage("teams.management.no-permission"));
-            return;
-        }
-
-        teamService.setBannerColor(team.teamId(), color);
-        player.sendMessage(core.getMessage("teams.management.banner-updated"));
-        navigate(player, () -> TeamManageGui.open(core, player, teamService));
-    }
-
-    private void handleNameColorGuiClick(Player player, int slot) {
-        TeamNameColor color = TeamNameColorGui.fromSlot(slot);
-        if (color == null) {
-            return;
-        }
-
-        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-        if (team == null) {
-            player.closeInventory();
-            return;
-        }
-
-        if (!teamService.isAdmin(player.getUniqueId())) {
-            player.closeInventory();
-            player.sendMessage(core.getMessage("teams.management.no-permission"));
-            return;
-        }
-
-        teamService.setNameColor(team.teamId(), color.colorCode());
-        player.sendMessage(core.getMessage("teams.management.name-color-updated"));
-        navigate(player, () -> TeamManageGui.open(core, player, teamService));
-    }
-
-    private void handleInviteGuiClick(Player player, int slot) {
+    private void handleInviteClick(Player player, int slot) {
         if (slot == 11) {
-            TeamRecord inviteTeam = inviteService.getInvite(player.getUniqueId()) == null
-                    ? null
-                    : teamService.getTeamById(inviteService.getInvite(player.getUniqueId()).teamId());
-
-            if (inviteTeam != null && teamService.getTeamMembers(inviteTeam.teamId()).size() >= TeamsMainGui.teamSizeLimit(core)) {
-                player.sendMessage("§cThat team is full.");
-                return;
+            if (inviteService.acceptInvite(player.getUniqueId())) {
+                player.sendMessage("§aInvite accepted.");
+                TeamsMainGui.open(core, player, teamService, inviteService);
+            } else {
+                player.closeInventory();
+                player.sendMessage("§cCould not accept invite.");
             }
-
-            if (!inviteService.acceptInvite(player.getUniqueId())) {
-                player.sendMessage("§cCould not accept the invite.");
-                return;
-            }
-
-            player.sendMessage("§7Joined the team.");
-            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             return;
         }
 
         if (slot == 15) {
-            if (!inviteService.denyInvite(player.getUniqueId())) {
-                player.sendMessage("§cCould not deny the invite.");
-                return;
-            }
-
-            player.sendMessage(core.getMessage("teams.invite.denied"));
-            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
-        }
-    }
-
-    private void handleBansGuiClick(Player player, int slot) {
-        TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-
-        if (team == null) {
-            player.closeInventory();
-            return;
-        }
-
-        if (slot == 49) {
-            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
-            return;
-        }
-
-        if (slot < 0 || slot >= TeamsMainGui.maxRosterGuiSlots()) {
-            return;
-        }
-
-        List<TeamBanRecord> bans = banService.getActiveBans(team.teamId());
-
-        if (slot >= bans.size()) {
-            return;
-        }
-
-        TeamBanRecord selected = bans.get(slot);
-        banService.clearBan(team.teamId(), selected.playerId());
-        player.sendMessage(core.getMessage("teams.bans.unbanned"));
-        TeamBansGui.open(core, player, team.teamId(), banService, teamService);
-    }
-
-    private void handleManageMemberClick(Player player, int slot) {
-        if (!player.hasMetadata(META_MANAGE_TARGET)) {
-            player.closeInventory();
-            return;
-        }
-
-        UUID targetId = UUID.fromString(player.getMetadata(META_MANAGE_TARGET).get(0).asString());
-        TeamRecord viewerTeam = teamService.getTeamByPlayer(player.getUniqueId());
-        TeamRecord targetTeam = teamService.getTeamByPlayer(targetId);
-
-        if (viewerTeam == null || targetTeam == null || !viewerTeam.teamId().equals(targetTeam.teamId())) {
-            player.closeInventory();
-            return;
-        }
-
-        TeamMemberRecord viewerMember = teamService.getMember(player.getUniqueId());
-        TeamMemberRecord targetMember = teamService.getMember(targetId);
-
-        if (viewerMember == null || targetMember == null) {
-            player.closeInventory();
-            return;
-        }
-
-        switch (slot) {
-            case 10 -> {
-                if (!TeamMemberManageGui.canPromote(viewerMember, targetMember)) {
-                    player.sendMessage(core.getMessage("teams.management.promote-founder-only"));
-                    return;
-                }
-                handleDoubleClickConfirm(player, "PROMOTE:" + targetId, () -> {
-                    teamService.setMemberRole(targetId, TeamRole.ADMIN);
-                    player.sendMessage(core.getMessage("teams.management.promoted"));
-                    TeamMemberManageGui.open(core, player, targetId, teamService);
-                });
-            }
-
-            case 11 -> {
-                if (!TeamMemberManageGui.canDemote(viewerMember, targetMember)) {
-                    player.sendMessage(core.getMessage("teams.management.demote-founder-only"));
-                    return;
-                }
-                handleDoubleClickConfirm(player, "DEMOTE:" + targetId, () -> {
-                    teamService.setMemberRole(targetId, TeamRole.MEMBER);
-                    player.sendMessage(core.getMessage("teams.management.demoted"));
-                    TeamMemberManageGui.open(core, player, targetId, teamService);
-                });
-            }
-
-            case 12 -> {
-                if (!TeamMemberManageGui.canKick(player, targetId, viewerMember, targetMember)) {
-                    player.sendMessage(core.getMessage("teams.management.cannot-kick-target"));
-                    return;
-                }
-                handleDoubleClickConfirm(player, "KICK:" + targetId, () -> {
-                    teamService.removeMember(targetId);
-                    player.sendMessage(core.getMessage("teams.management.kicked"));
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                });
-            }
-
-            case 13 -> playerStatisticsGui.open(player, targetId);
-
-            case 14 -> {
-                if (!TeamMemberManageGui.canKick(player, targetId, viewerMember, targetMember)) {
-                    player.sendMessage(core.getMessage("teams.management.cannot-kick-target"));
-                    return;
-                }
-                handleDoubleClickConfirm(player, "BAN:" + targetId, () -> {
-                    TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-                    if (team == null) {
-                        player.closeInventory();
-                        return;
-                    }
-
-                    banService.banForDefaultDuration(team.teamId(), targetId, player.getUniqueId());
-                    teamService.removeMember(targetId);
-                    player.sendMessage(core.getMessage("teams.management.kicked"));
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                });
-            }
-
-            case 16 -> {
-                if (!TeamMemberManageGui.canTransferFounder(player, targetId, viewerMember, targetMember)) {
-                    player.sendMessage(core.getMessage("teams.management.transfer-founder-only"));
-                    return;
-                }
-                handleDoubleClickConfirm(player, "TRANSFER:" + targetId, () -> {
-                    TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
-                    if (team != null && teamService.transferFounder(team.teamId(), player.getUniqueId(), targetId)) {
-                        player.sendMessage(core.getMessage("teams.management.transfer-success"));
-                        TeamsMainGui.open(core, player, teamService, inviteService);
-                    }
-                });
-            }
-
-            default -> {
+            if (inviteService.denyInvite(player.getUniqueId())) {
+                player.closeInventory();
+                player.sendMessage("§cInvite declined.");
+            } else {
+                player.closeInventory();
+                player.sendMessage("§cNo invite found.");
             }
         }
     }
 
-    private void handleDoubleClickConfirm(Player player, String action, Runnable confirmedAction) {
-        String currentAction = player.hasMetadata(META_TEAM_ACTION)
-                ? player.getMetadata(META_TEAM_ACTION).get(0).asString()
-                : "";
-
-        boolean currentlyConfirmed = player.hasMetadata(META_TEAM_CONFIRM)
-                && player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
-
-        if (currentAction.equals(action) && currentlyConfirmed) {
-            clearConfirmMeta(player);
-            confirmedAction.run();
+    private void handleMemberClick(Player player, int slot) {
+        if (!player.hasMetadata(META_TARGET)) {
+            player.closeInventory();
             return;
         }
 
-        player.setMetadata(META_TEAM_ACTION, new FixedMetadataValue(core, action));
-        player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, true));
+        UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
+        TeamMemberRecord target = teamService.getMember(targetId);
 
-        player.sendActionBar(Component.text(core.getMessage("teams.gui.click-again")));
-        player.sendMessage(core.getMessage("teams.gui.click-again"));
+        if (target == null) {
+            player.closeInventory();
+            return;
+        }
 
-        core.getServer().getScheduler().runTaskLater(core, () -> {
-            if (!player.isOnline()) {
+        if (slot == 10) {
+            if (!teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.ADMIN)) {
+                player.sendMessage("§cYou cannot promote this player.");
                 return;
             }
 
-            if (!player.hasMetadata(META_TEAM_ACTION) || !player.hasMetadata(META_TEAM_CONFIRM)) {
+            player.sendMessage("§aPlayer promoted.");
+            TeamMemberGui.open(player, targetId, teamService);
+            return;
+        }
+
+        if (slot == 12) {
+            if (!teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.MEMBER)) {
+                player.sendMessage("§cYou cannot demote this player.");
                 return;
             }
 
-            String laterAction = player.getMetadata(META_TEAM_ACTION).get(0).asString();
-            boolean laterConfirmed = player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
+            player.sendMessage("§aPlayer demoted.");
+            TeamMemberGui.open(player, targetId, teamService);
+            return;
+        }
 
-            if (laterAction.equals(action) && laterConfirmed) {
-                clearConfirmMeta(player);
-                player.sendActionBar(Component.text(core.getMessage("teams.gui.action-timeout")));
-                player.sendMessage(core.getMessage("teams.gui.action-timeout"));
-            }
-        }, 20L * 5);
+        if (slot == 14) {
+            player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
+            TeamConfirmGui.open(player, "Kick Player");
+            return;
+        }
+
+        if (slot == 22) {
+            TeamsMainGui.open(core, player, teamService, inviteService);
+        }
     }
 
     private void handleConfirmClick(Player player, int slot) {
-        if (!player.hasMetadata(META_TEAM_ACTION)) {
-            player.closeInventory();
-            return;
-        }
-
-        String actionValue = player.getMetadata(META_TEAM_ACTION).get(0).asString();
-        boolean confirmed = player.hasMetadata(META_TEAM_CONFIRM)
-                && player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
-
         if (slot == 11) {
-            clearConfirmMeta(player);
-            navigate(player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
-
-            player.sendActionBar(Component.text(core.getMessage("teams.gui.action-cancelled")));
-            player.sendMessage(core.getMessage("teams.gui.action-cancelled"));
+            player.closeInventory();
+            player.removeMetadata(META_ACTION, core);
+            player.removeMetadata(META_TARGET, core);
+            player.sendMessage("§cAction cancelled.");
             return;
         }
 
@@ -608,85 +249,52 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (!confirmed) {
-            player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, true));
-            player.sendActionBar(Component.text(core.getMessage("teams.gui.click-again")));
-            player.sendMessage(core.getMessage("teams.gui.click-again"));
-
-            core.getServer().getScheduler().runTaskLater(core, () -> {
-                if (!player.isOnline()) {
-                    return;
-                }
-
-                if (!player.hasMetadata(META_TEAM_ACTION) || !player.hasMetadata(META_TEAM_CONFIRM)) {
-                    return;
-                }
-
-                String currentAction = player.getMetadata(META_TEAM_ACTION).get(0).asString();
-                boolean currentConfirmed = player.getMetadata(META_TEAM_CONFIRM).get(0).asBoolean();
-
-                if (currentAction.equals(actionValue) && currentConfirmed) {
-                    player.setMetadata(META_TEAM_CONFIRM, new FixedMetadataValue(core, false));
-                    player.sendActionBar(Component.text(core.getMessage("teams.gui.action-timeout")));
-                    player.sendMessage(core.getMessage("teams.gui.action-timeout"));
-                }
-            }, 20L * 5);
-
+        if (!player.hasMetadata(META_ACTION)) {
+            player.closeInventory();
             return;
         }
 
-        clearConfirmMeta(player);
-    }
+        String action = player.getMetadata(META_ACTION).get(0).asString();
 
-    private void navigate(Player player, Runnable openAction) {
-        UUID uuid = player.getUniqueId();
-        navigating.add(uuid);
-
-        Bukkit.getScheduler().runTask(core, () -> {
-            if (!player.isOnline()) {
-                navigating.remove(uuid);
-                return;
+        switch (action) {
+            case "DISBAND" -> {
+                if (teamService.disbandTeam(player.getUniqueId())) {
+                    player.closeInventory();
+                    player.sendMessage("§cTeam disbanded.");
+                } else {
+                    player.sendMessage("§cYou cannot disband this team.");
+                }
             }
 
-            openAction.run();
-
-            Bukkit.getScheduler().runTaskLater(core, () -> navigating.remove(uuid), 2L);
-        });
-    }
-
-    private void openPreviousMenu(Player player, Runnable openAction) {
-        UUID uuid = player.getUniqueId();
-        navigating.add(uuid);
-
-        Bukkit.getScheduler().runTaskLater(core, () -> {
-            if (!player.isOnline()) {
-                navigating.remove(uuid);
-                return;
+            case "LEAVE" -> {
+                if (teamService.removeMember(player.getUniqueId())) {
+                    player.closeInventory();
+                    player.sendMessage("§cYou left your team.");
+                } else {
+                    player.sendMessage("§cYou cannot leave as founder.");
+                }
             }
 
-            openAction.run();
+            case "KICK" -> {
+                if (!player.hasMetadata(META_TARGET)) {
+                    player.closeInventory();
+                    return;
+                }
 
-            Bukkit.getScheduler().runTaskLater(core, () -> navigating.remove(uuid), 3L);
-        }, 1L);
-    }
+                UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
 
-    private void clearConfirmMeta(Player player) {
-        player.removeMetadata(META_TEAM_ACTION, core);
-        player.removeMetadata(META_TEAM_CONFIRM, core);
-    }
+                if (teamService.kickMember(player.getUniqueId(), targetId)) {
+                    player.sendMessage("§cPlayer kicked.");
+                    TeamsMainGui.open(core, player, teamService, inviteService);
+                } else {
+                    player.sendMessage("§cYou cannot kick that player.");
+                }
+            }
 
-    private void sendCreateTeamPrompt(Player player) {
-        player.sendMessage("§cYou are not in a team.");
+            default -> player.closeInventory();
+        }
 
-        Component clickable = Component.text("§7Type §d/team create <name> §7to create a team.")
-                .clickEvent(ClickEvent.suggestCommand("/team create "));
-
-        player.sendMessage(clickable);
-    }
-
-    private String cleanTitle(String input) {
-        String colored = ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
-        String stripped = ChatColor.stripColor(colored);
-        return stripped == null ? "" : stripped.trim().toLowerCase(Locale.ROOT);
+        player.removeMetadata(META_ACTION, core);
+        player.removeMetadata(META_TARGET, core);
     }
 }

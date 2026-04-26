@@ -26,7 +26,7 @@ homes:
   upgrade-line-2: "&d♦ &fhttps://store.mineacle.net"
 
   gui:
-    title: "&8Player Homes"
+    title: "&8Homes"
     delete-title: "&8Confirm Delete"
     team-delete-title: "&8Delete Team Home"
     click-delete-again-chat: "&cClick confirm again to delete &f%home%&c."

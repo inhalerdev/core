@@ -8,7 +8,6 @@ import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -18,59 +17,45 @@ import java.util.List;
 
 public final class TeamInviteGui {
 
-    public static String TITLE(Core core) {
-        return color(core.getMessage("teams.gui.invites-title"));
-    }
+    public static final String TITLE = ChatColor.DARK_GRAY + "Team Invite";
 
     private TeamInviteGui() {
     }
 
     public static void open(Core core, Player player, TeamInviteService inviteService, TeamService teamService) {
-        Inventory inventory = Bukkit.createInventory(null, 27, TITLE(core));
-
         TeamInviteRecord invite = inviteService.getInvite(player.getUniqueId());
 
         if (invite == null) {
-            inventory.setItem(13, item(
-                    Material.BARRIER,
-                    core.getMessage("teams.gui.no-invite-title"),
-                    List.of(core.getMessage("teams.gui.no-invite-lore-1"))
-            ));
-            player.openInventory(inventory);
+            player.sendMessage("§cYou have no current team invites.");
             return;
         }
 
         TeamRecord team = teamService.getTeamById(invite.teamId());
-        OfflinePlayer inviter = Bukkit.getOfflinePlayer(invite.inviterId());
 
-        String teamName = team == null ? "Unknown Team" : teamService.formatTeamName(team);
-        String inviterName = inviter.getName() == null ? invite.inviterId().toString() : inviter.getName();
-        Material bannerMaterial = team == null ? Material.PURPLE_BANNER : team.bannerColor().bannerMaterial();
+        if (team == null) {
+            player.sendMessage("§cThat team no longer exists.");
+            inviteService.denyInvite(player.getUniqueId());
+            return;
+        }
+
+        Inventory inventory = Bukkit.createInventory(null, 27, TITLE);
 
         inventory.setItem(11, item(
-                Material.LIME_STAINED_GLASS_PANE,
-                core.getMessage("teams.gui.invite-accept-title"),
-                List.of(
-                        core.getMessage("teams.gui.invite-accept-lore-1").replace("%team%", teamName),
-                        core.getMessage("teams.gui.invite-accept-lore-2").replace("%inviter%", inviterName),
-                        core.getMessage("teams.gui.invite-accept-lore-3")
-                )
+                Material.LIME_CONCRETE,
+                "&aAccept Invite",
+                List.of("&7Join &d" + team.name())
         ));
 
         inventory.setItem(13, item(
-                bannerMaterial,
-                core.getMessage("teams.gui.invite-center-title").replace("%team%", teamName),
-                List.of(core.getMessage("teams.gui.invite-center-lore-1").replace("%inviter%", inviterName))
+                Material.PURPLE_BANNER,
+                "&d" + team.name(),
+                List.of("&7Team invite")
         ));
 
         inventory.setItem(15, item(
-                Material.RED_STAINED_GLASS_PANE,
-                core.getMessage("teams.gui.invite-deny-title"),
-                List.of(
-                        core.getMessage("teams.gui.invite-deny-lore-1").replace("%team%", teamName),
-                        core.getMessage("teams.gui.invite-deny-lore-2").replace("%inviter%", inviterName),
-                        core.getMessage("teams.gui.invite-deny-lore-3")
-                )
+                Material.RED_CONCRETE,
+                "&cDecline Invite",
+                List.of("&7Decline this invite")
         ));
 
         player.openInventory(inventory);
@@ -79,13 +64,19 @@ public final class TeamInviteGui {
     private static ItemStack item(Material material, String name, List<String> lore) {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
+
+        if (meta == null) {
+            return item;
+        }
+
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamInviteGui::color).toList());
+
         item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input);
+        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
     }
 }
