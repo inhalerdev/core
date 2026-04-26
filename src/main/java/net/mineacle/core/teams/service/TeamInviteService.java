@@ -1,8 +1,7 @@
 package net.mineacle.core.teams.service;
 
-import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
-
+import net.mineacle.core.teams.model.TeamInviteRecord;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;

@@ -1,10 +1,10 @@
 package net.mineacle.core.teams.gui;
 
 import net.mineacle.core.Core;
-import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
+import net.mineacle.core.teams.model.TeamInviteRecord;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;

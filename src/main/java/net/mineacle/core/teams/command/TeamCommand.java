@@ -3,10 +3,10 @@ package net.mineacle.core.teams.command;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
+import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
-import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.service.TeamHomeService;
@@ -22,7 +22,6 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 public final class TeamCommand implements CommandExecutor, TabCompleter {
 
