@@ -10,7 +10,6 @@ import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
-import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
@@ -25,7 +24,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-import java.util.UUID;
 
 public final class TeamCommand implements CommandExecutor, TabCompleter {
 
@@ -106,6 +104,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
             case "invite" -> {
                 return invite(player, args);
+            }
+
+            case "chat" -> {
+                return teamChat(player);
             }
 
             case "leave" -> {
@@ -266,9 +268,30 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         target.sendActionBar(Component.text("§dTeam invite from §f" + player.getName()));
         target.sendMessage("§7You were invited to join §d" + team.name() + "§7.");
-        target.sendMessage(Component.text("§a[VIEW INVITE]")
+        target.sendMessage(Component.text("§a[View Invite]")
                 .clickEvent(ClickEvent.runCommand("/team join")));
 
+        return true;
+    }
+
+    private boolean teamChat(Player player) {
+        if (!teamService.hasTeam(player.getUniqueId())) {
+            player.sendMessage("§cYou are not in a team.");
+            return true;
+        }
+
+        boolean enabled = teamService.toggleTeamChat(player.getUniqueId());
+
+        if (enabled) {
+            String message = "§7Team chat enabled";
+            player.sendMessage(message);
+            player.sendActionBar(Component.text(message));
+            return true;
+        }
+
+        String message = "§7Team chat disabled";
+        player.sendMessage(message);
+        player.sendActionBar(Component.text(message));
         return true;
     }
 
@@ -437,6 +460,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             } else if (teamService.isAdmin(player.getUniqueId())) {
                 options = List.of(
                         "invite",
+                        "chat",
                         "home",
                         "friendlyfire",
                         "pvp",
@@ -448,7 +472,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                         "disband"
                 );
             } else {
-                options = List.of("home", "leave");
+                options = List.of("chat", "home", "leave");
             }
 
             String partial = args[0].toLowerCase(Locale.ROOT);
