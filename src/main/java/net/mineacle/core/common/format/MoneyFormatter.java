@@ -1,5 +1,8 @@
 package net.mineacle.core.common.format;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+
 public final class MoneyFormatter {
 
     private static final String[] SUFFIXES = {
@@ -34,23 +37,33 @@ public final class MoneyFormatter {
         String formatted;
 
         if (suffixIndex == 0) {
-            formatted = String.format("%.0f", number);
+            formatted = stripZeros(BigDecimal.valueOf(number).setScale(2, RoundingMode.HALF_UP));
         } else if (number >= 100) {
             formatted = String.format("%.0f", number);
         } else if (number >= 10) {
-            formatted = String.format("%.1f", number);
+            formatted = stripZeros(BigDecimal.valueOf(number).setScale(1, RoundingMode.HALF_UP));
         } else {
-            formatted = String.format("%.2f", number);
+            formatted = stripZeros(BigDecimal.valueOf(number).setScale(2, RoundingMode.HALF_UP));
         }
-
-        formatted = formatted
-                .replaceAll("\\.00$", "")
-                .replaceAll("\\.0$", "");
 
         return (negative ? "-" : "") + formatted + SUFFIXES[suffixIndex];
     }
 
     public static String money(double value) {
-        return "$" + compact(value);
+        double absolute = Math.abs(value);
+
+        if (absolute >= 1000.0) {
+            return "$" + compact(value);
+        }
+
+        return "$" + stripZeros(BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP));
+    }
+
+    public static String moneyFromCents(long cents) {
+        return money(cents / 100.0);
+    }
+
+    private static String stripZeros(BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 }

@@ -34,10 +34,6 @@ commands:
     description: Request to teleport to a player
     permission: mineacletpa.use
 
-  stats:
-    description: View player stats
-    permission: mineaclestats.use
-
   tpahere:
     description: Request a player teleport to you
     permission: mineacletpa.use
@@ -49,6 +45,28 @@ commands:
   tpdeny:
     description: Deny a teleport request
     permission: mineacletpa.use
+
+  stats:
+    description: View player stats
+    permission: mineaclestats.use
+
+  bal:
+    description: View your balance
+    aliases: [balance, money]
+    permission: mineacleeconomy.use
+
+  pay:
+    description: Pay another player
+    permission: mineacleeconomy.pay
+
+  eco:
+    description: Manage balances
+    permission: mineacleeconomy.admin
+
+  baltop:
+    description: View balance top
+    aliases: [balancetop]
+    permission: mineaclebaltop.use
 
 permissions:
   mineaclehomes.use:
@@ -76,4 +94,19 @@ permissions:
     default: true
 
   mineaclestats.admin:
+    default: op
+
+  mineacleeconomy.use:
+    default: true
+
+  mineacleeconomy.pay:
+    default: true
+
+  mineacleeconomy.admin:
+    default: op
+
+  mineaclebaltop.use:
+    default: true
+
+  mineaclebaltop.admin:
     default: op

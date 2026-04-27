@@ -48,3 +48,17 @@ tpa:
   enabled: true
   request-timeout-seconds: 60
   teleport-delay-seconds: 5
+
+economy:
+  enabled: true
+  starting-balance: 0
+  currency-symbol: "$"
+
+  pay:
+    enabled: true
+    minimum: 0.01
+
+baltop:
+  enabled: true
+  gui-title: "&dBalance Top"
+  entries-per-page: 45

@@ -191,3 +191,50 @@ teams:
 
     search-help-1: "&7Use the sign input to search team members."
     search-help-2: "&7Leave it blank to clear the search."
+
+  economy:
+    balance-self: "&7Balance: &a%balance%"
+    balance-other: "&d%player%&7's balance: &a%balance%"
+
+    paid-chat: "&a+%amount%"
+    paid-actionbar: "&a+%amount%"
+
+    paid-offline-single: "&7You received &a%amount%&7 from &d%player%&7 while you were away"
+    paid-offline-multiple: "&7You received &a%amount%&7 while you were away"
+
+    pay-sent: "&7Paid &a%amount% &7to &d%player%&7."
+    pay-usage: "&cUsage: /pay <player> <amount>"
+    cannot-pay-self: "&cYou cannot pay yourself."
+    not-enough-money: "&cYou do not have enough money."
+    invalid-amount: "&cEnter a valid amount."
+    player-not-found: "&cThat player could not be found."
+
+    baltop-header: "&dBalance Top"
+    baltop-empty: "&7No balances have been recorded yet."
+    baltop-line: "&d#%position% &f%player% &7- &a%balance%"
+
+    eco-usage: "&cUsage: /eco <give|take|set|reset> <player|*|**> [amount]"
+    eco-success: "&aEco %action% completed for %count% target(s): %amount%"
+    eco-reset: "&aEco reset completed for %count% target(s)."
+
+  baltop:
+    header: "&dBalance Top"
+    empty: "&7No balances have been recorded yet."
+    line: "&d#%position% &f%player% &7- &a%balance%"
+
+    gui-empty-title: "&7No Balances"
+    gui-empty-lore: "&fNo balances have been recorded yet."
+
+    gui-entry-title: "&d#%position% &f%player%"
+    gui-entry-lore:
+      - "&7Balance: &a%balance%"
+      - "&7Rank: &d#%position%"
+
+    previous-title: "&dPrevious Page"
+    previous-lore: "&7Click to view the previous page."
+
+    refresh-title: "&dRefresh"
+    refresh-lore: "&7Click to refresh balance top."
+
+    next-title: "&dNext Page"
+    next-lore: "&7Click to view the next page."

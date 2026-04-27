@@ -1,0 +1,238 @@
+package net.mineacle.core.economy.service;
+
+import net.kyori.adventure.text.Component;
+import net.mineacle.core.Core;
+import net.mineacle.core.common.format.MoneyFormatter;
+import org.bukkit.Bukkit;
+import org.bukkit.OfflinePlayer;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+public final class EconomyService {
+
+    private final Core core;
+    private final Map<UUID, Long> balances = new HashMap<>();
+    private final Map<UUID, OfflinePaymentNotice> offlinePayments = new HashMap<>();
+
+    public EconomyService(Core core) {
+        this.core = core;
+        load();
+    }
+
+    public long startingBalanceCents() {
+        return amountToCents(BigDecimal.valueOf(core.getConfig().getDouble("economy.starting-balance", 0.0)));
+    }
+
+    public long getBalanceCents(UUID playerId) {
+        return balances.getOrDefault(playerId, startingBalanceCents());
+    }
+
+    public String format(long cents) {
+        return MoneyFormatter.moneyFromCents(cents);
+    }
+
+    public boolean has(UUID playerId, long cents) {
+        return getBalanceCents(playerId) >= cents;
+    }
+
+    public void setBalance(UUID playerId, long cents) {
+        balances.put(playerId, Math.max(0L, cents));
+        save();
+    }
+
+    public void give(UUID playerId, long cents) {
+        setBalance(playerId, getBalanceCents(playerId) + Math.max(0L, cents));
+    }
+
+    public boolean take(UUID playerId, long cents) {
+        long current = getBalanceCents(playerId);
+
+        if (current < cents) {
+            return false;
+        }
+
+        setBalance(playerId, current - cents);
+        return true;
+    }
+
+    public boolean pay(Player sender, OfflinePlayer target, long cents) {
+        if (sender == null || target == null) {
+            return false;
+        }
+
+        if (sender.getUniqueId().equals(target.getUniqueId())) {
+            sender.sendMessage(message("economy.cannot-pay-self"));
+            return false;
+        }
+
+        if (cents < 1L) {
+            sender.sendMessage(message("economy.invalid-amount"));
+            return false;
+        }
+
+        if (!has(sender.getUniqueId(), cents)) {
+            sender.sendMessage(message("economy.not-enough-money"));
+            return false;
+        }
+
+        take(sender.getUniqueId(), cents);
+        give(target.getUniqueId(), cents);
+
+        String amount = format(cents);
+
+        sender.sendMessage(message("economy.pay-sent")
+                .replace("%amount%", amount)
+                .replace("%player%", target.getName() == null ? target.getUniqueId().toString() : target.getName()));
+
+        Player onlineTarget = target.getPlayer();
+
+        if (onlineTarget != null && onlineTarget.isOnline()) {
+            sendOnlinePaidMessage(onlineTarget, cents);
+        } else {
+            addOfflinePayment(target.getUniqueId(), cents, sender.getName());
+        }
+
+        save();
+        return true;
+    }
+
+    public void sendOnlinePaidMessage(Player player, long cents) {
+        String amount = format(cents);
+        String chat = message("economy.paid-chat").replace("%amount%", amount);
+        String actionbar = message("economy.paid-actionbar").replace("%amount%", amount);
+
+        player.sendMessage(chat);
+        player.sendActionBar(Component.text(actionbar));
+    }
+
+    public void addOfflinePayment(UUID targetId, long cents, String senderName) {
+        OfflinePaymentNotice notice = offlinePayments.get(targetId);
+
+        if (notice == null) {
+            notice = new OfflinePaymentNotice(0L, new HashSet<>());
+            offlinePayments.put(targetId, notice);
+        }
+
+        notice.add(cents, senderName);
+        save();
+    }
+
+    public OfflinePaymentNotice consumeOfflinePayment(UUID playerId) {
+        OfflinePaymentNotice notice = offlinePayments.remove(playerId);
+
+        if (notice != null) {
+            save();
+        }
+
+        return notice;
+    }
+
+    public List<Map.Entry<UUID, Long>> topBalances(int limit) {
+        List<Map.Entry<UUID, Long>> entries = new ArrayList<>(balances.entrySet());
+
+        entries.sort(Map.Entry.<UUID, Long>comparingByValue(Comparator.reverseOrder()));
+
+        if (entries.size() <= limit) {
+            return entries;
+        }
+
+        return entries.subList(0, limit);
+    }
+
+    public long parseAmountToCents(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return -1L;
+        }
+
+        try {
+            BigDecimal amount = new BigDecimal(raw.trim());
+            return amountToCents(amount);
+        } catch (NumberFormatException exception) {
+            return -1L;
+        }
+    }
+
+    public long amountToCents(BigDecimal amount) {
+        if (amount == null) {
+            return -1L;
+        }
+
+        if (amount.compareTo(BigDecimal.ZERO) < 0) {
+            return -1L;
+        }
+
+        return amount
+                .setScale(2, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100L))
+                .longValue();
+    }
+
+    public void reset(UUID playerId) {
+        setBalance(playerId, startingBalanceCents());
+    }
+
+    public void save() {
+        FileConfiguration config = core.getEconomyConfig();
+
+        config.set("balances", null);
+        config.set("offline-payments", null);
+
+        for (Map.Entry<UUID, Long> entry : balances.entrySet()) {
+            config.set("balances." + entry.getKey(), entry.getValue());
+        }
+
+        for (Map.Entry<UUID, OfflinePaymentNotice> entry : offlinePayments.entrySet()) {
+            String path = "offline-payments." + entry.getKey();
+            config.set(path + ".total-cents", entry.getValue().totalCents());
+            config.set(path + ".senders", new ArrayList<>(entry.getValue().senders()));
+        }
+
+        core.saveEconomyFile();
+    }
+
+    private void load() {
+        balances.clear();
+        offlinePayments.clear();
+
+        FileConfiguration config = core.getEconomyConfig();
+
+        ConfigurationSection balanceSection = config.getConfigurationSection("balances");
+        if (balanceSection != null) {
+            for (String key : balanceSection.getKeys(false)) {
+                try {
+                    balances.put(UUID.fromString(key), config.getLong("balances." + key));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+
+        ConfigurationSection offlineSection = config.getConfigurationSection("offline-payments");
+        if (offlineSection != null) {
+            for (String key : offlineSection.getKeys(false)) {
+                try {
+                    UUID uuid = UUID.fromString(key);
+                    long totalCents = config.getLong("offline-payments." + key + ".total-cents", 0L);
+                    List<String> senders = config.getStringList("offline-payments." + key + ".senders");
+
+                    offlinePayments.put(uuid, new OfflinePaymentNotice(totalCents, new HashSet<>(senders)));
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+    }
+
+    private String message(String path) {
+        return core.getMessage(path);
+    }
+}

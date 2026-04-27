@@ -1,15 +1,17 @@
 package net.mineacle.core;
 
+import net.mineacle.core.baltop.BalTopModule;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.common.gui.MenuCloseListener;
+import net.mineacle.core.economy.EconomyModule;
 import net.mineacle.core.homes.HomesModule;
+import net.mineacle.core.stats.StatsModule;
 import net.mineacle.core.teams.TeamsModule;
+import net.mineacle.core.tpa.TpaModule;
 import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
-import net.mineacle.core.tpa.TpaModule;
-import net.mineacle.core.stats.StatsModule;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,6 +32,9 @@ public final class Core extends JavaPlugin {
     private File teamsFile;
     private FileConfiguration teamsConfig;
 
+    private File economyFile;
+    private FileConfiguration economyConfig;
+
     private final List<Module> modules = new ArrayList<>();
 
     public static Core instance() {
@@ -44,6 +49,7 @@ public final class Core extends JavaPlugin {
         loadMessagesFile();
         loadHomesFile();
         loadTeamsFile();
+        loadEconomyFile();
 
         getServer().getPluginManager().registerEvents(new MenuCloseListener(this), this);
 
@@ -51,10 +57,10 @@ public final class Core extends JavaPlugin {
             registerModule(new HomesModule());
             registerModule(new TeamsModule());
             registerModule(new TpaModule());
-            registerModule(new HomesModule());
-            registerModule(new TeamsModule());
-            registerModule(new TpaModule());
             registerModule(new StatsModule());
+            registerModule(new EconomyModule());
+            registerModule(new BalTopModule());
+
             getLogger().info("MineacleCore enabled successfully.");
         } catch (Exception exception) {
             getLogger().severe("Failed to enable MineacleCore: " + exception.getMessage());
@@ -68,6 +74,7 @@ public final class Core extends JavaPlugin {
         disableModules();
         saveHomesFile();
         saveTeamsFile();
+        saveEconomyFile();
         instance = null;
     }
 
@@ -97,6 +104,7 @@ public final class Core extends JavaPlugin {
         loadMessagesFile();
         loadHomesFile();
         loadTeamsFile();
+        loadEconomyFile();
     }
 
     private void loadMessagesFile() {
@@ -105,6 +113,7 @@ public final class Core extends JavaPlugin {
         }
 
         messagesFile = new File(getDataFolder(), "messages.yml");
+
         if (!messagesFile.exists()) {
             saveResource("messages.yml", false);
         }
@@ -118,6 +127,7 @@ public final class Core extends JavaPlugin {
         }
 
         homesFile = new File(getDataFolder(), "homes.yml");
+
         if (!homesFile.exists()) {
             saveResource("homes.yml", false);
         }
@@ -131,11 +141,31 @@ public final class Core extends JavaPlugin {
         }
 
         teamsFile = new File(getDataFolder(), "teams.yml");
+
         if (!teamsFile.exists()) {
             saveResource("teams.yml", false);
         }
 
         teamsConfig = YamlConfiguration.loadConfiguration(teamsFile);
+    }
+
+    private void loadEconomyFile() {
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdirs();
+        }
+
+        economyFile = new File(getDataFolder(), "economy.yml");
+
+        if (!economyFile.exists()) {
+            try {
+                economyFile.createNewFile();
+            } catch (IOException exception) {
+                getLogger().severe("Could not create economy.yml");
+                exception.printStackTrace();
+            }
+        }
+
+        economyConfig = YamlConfiguration.loadConfiguration(economyFile);
     }
 
     public void saveHomesFile() {
@@ -164,6 +194,19 @@ public final class Core extends JavaPlugin {
         }
     }
 
+    public void saveEconomyFile() {
+        if (economyFile == null || economyConfig == null) {
+            return;
+        }
+
+        try {
+            economyConfig.save(economyFile);
+        } catch (IOException exception) {
+            getLogger().severe("Could not save economy.yml");
+            exception.printStackTrace();
+        }
+    }
+
     public FileConfiguration getMessagesConfig() {
         return messagesConfig;
     }
@@ -176,9 +219,17 @@ public final class Core extends JavaPlugin {
         return teamsConfig;
     }
 
+    public FileConfiguration getEconomyConfig() {
+        return economyConfig;
+    }
+
     public String getMessage(String path) {
         String value = messagesConfig.getString(path, "&cMissing message: " + path);
         return ChatColor.translateAlternateColorCodes('&', value);
+    }
+
+    public String getMessageText(String value) {
+        return ChatColor.translateAlternateColorCodes('&', value == null ? "" : value);
     }
 
     public List<Module> modules() {
