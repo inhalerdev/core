@@ -38,10 +38,10 @@ public final class TeleportService {
             return;
         }
 
-        int delaySeconds = core.getConfig().getInt("homes.teleport.delay-seconds", 5);
+        int delaySeconds = getDelaySeconds(targetName);
 
         teleporting.add(uuid);
-        teleportOrigins.put(uuid, player.getLocation());
+        teleportOrigins.put(uuid, player.getLocation().clone());
 
         if (delaySeconds <= 0) {
             teleporting.remove(uuid);
@@ -76,7 +76,7 @@ public final class TeleportService {
                 }
 
                 String message = core.getMessage("homes.teleporting")
-                        .replace("%target%", targetName)
+                        .replace("%target%", targetName == null ? "destination" : targetName)
                         .replace("%seconds%", String.valueOf(countdown));
 
                 player.sendActionBar(Component.text(message));
@@ -108,6 +108,18 @@ public final class TeleportService {
             player.sendActionBar(Component.text(message));
             player.sendMessage(message);
         }
+    }
+
+    private int getDelaySeconds(String targetName) {
+        if (targetName != null && targetName.equalsIgnoreCase("TPA")) {
+            return Math.max(0, core.getConfig().getInt("tpa.teleport-delay-seconds", 5));
+        }
+
+        if (targetName != null && targetName.equalsIgnoreCase("Team Home")) {
+            return Math.max(0, core.getConfig().getInt("homes.team-home.teleport-delay-seconds", 5));
+        }
+
+        return Math.max(0, core.getConfig().getInt("homes.teleport.delay-seconds", 5));
     }
 
     private boolean sameBlock(Location a, Location b) {

@@ -30,6 +30,7 @@ public final class TeamsGuiListener implements Listener {
 
     private static final String META_TARGET = "simple_team_target";
     private static final String META_ACTION = "simple_team_action";
+    private static final String META_CONFIRM = "simple_team_confirm";
 
     private final Core core;
     private final TeamService teamService;
@@ -222,28 +223,16 @@ public final class TeamsGuiListener implements Listener {
         }
 
         if (slot == 10) {
-            if (!teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.ADMIN)) {
-                player.sendMessage("§cYou cannot promote this player.");
-                return;
-            }
-
-            player.sendMessage("§aPlayer promoted.");
-            TeamMemberGui.open(player, targetId, teamService);
+            startConfirm(player, "PROMOTE", targetId, "Promote Player");
             return;
         }
 
-        if (slot == 12) {
-            if (!teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.MEMBER)) {
-                player.sendMessage("§cYou cannot demote this player.");
-                return;
-            }
-
-            player.sendMessage("§aPlayer demoted.");
-            TeamMemberGui.open(player, targetId, teamService);
+        if (slot == 11) {
+            startConfirm(player, "DEMOTE", targetId, "Demote Player");
             return;
         }
 
-        if (slot == 14) {
+        if (slot == 13) {
             MenuHistory.openChild(
                     core,
                     player,
@@ -253,23 +242,33 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 16) {
-            player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
-
-            MenuHistory.openChild(
-                    core,
-                    player,
-                    () -> TeamMemberGui.open(player, targetId, teamService),
-                    () -> TeamConfirmGui.open(core, player, "Kick Player")
-            );
+        if (slot == 15) {
+            startConfirm(player, "KICK", targetId, "Kick Player");
+            return;
         }
+
+        if (slot == 16) {
+            startConfirm(player, "BAN", targetId, "Ban Player");
+        }
+    }
+
+    private void startConfirm(Player player, String action, UUID targetId, String title) {
+        player.setMetadata(META_ACTION, new FixedMetadataValue(core, action));
+        player.setMetadata(META_TARGET, new FixedMetadataValue(core, targetId.toString()));
+        player.removeMetadata(META_CONFIRM, core);
+
+        MenuHistory.openChild(
+                core,
+                player,
+                () -> TeamMemberGui.open(player, targetId, teamService),
+                () -> TeamConfirmGui.open(core, player, title)
+        );
     }
 
     private void handleConfirmClick(Player player, int slot) {
         if (slot == 11) {
+            clearConfirmMeta(player);
             player.closeInventory();
-            player.removeMetadata(META_ACTION, core);
-            player.removeMetadata(META_TARGET, core);
             player.sendMessage("§cAction cancelled.");
             return;
         }
@@ -285,27 +284,117 @@ public final class TeamsGuiListener implements Listener {
 
         String action = player.getMetadata(META_ACTION).get(0).asString();
 
-        if (action.equals("KICK")) {
-            if (!player.hasMetadata(META_TARGET)) {
-                player.closeInventory();
-                return;
-            }
-
-            UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
-
-            if (teamService.kickMember(player.getUniqueId(), targetId)) {
-                player.sendMessage("§cPlayer kicked.");
-                player.removeMetadata(META_ACTION, core);
-                player.removeMetadata(META_TARGET, core);
-
-                MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
-                return;
-            }
-
-            player.sendMessage("§cYou cannot kick that player.");
+        if (!isConfirmReady(player, action)) {
+            markConfirmReady(player, action);
+            return;
         }
 
+        if (action.equals("DISBAND")) {
+            if (teamService.disbandTeam(player.getUniqueId())) {
+                clearConfirmMeta(player);
+                player.closeInventory();
+                player.sendMessage("§cTeam disbanded.");
+                return;
+            }
+
+            player.sendMessage("§cOnly the founder can disband the team.");
+            return;
+        }
+
+        if (!player.hasMetadata(META_TARGET)) {
+            player.closeInventory();
+            return;
+        }
+
+        UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
+
+        switch (action) {
+            case "PROMOTE" -> {
+                if (teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.ADMIN)) {
+                    clearConfirmMeta(player);
+                    player.sendMessage("§aPlayer promoted.");
+                    MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                    return;
+                }
+
+                player.sendMessage("§cYou cannot promote this player.");
+            }
+
+            case "DEMOTE" -> {
+                if (teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.MEMBER)) {
+                    clearConfirmMeta(player);
+                    player.sendMessage("§aPlayer demoted.");
+                    MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                    return;
+                }
+
+                player.sendMessage("§cYou cannot demote this player.");
+            }
+
+            case "KICK" -> {
+                if (teamService.kickMember(player.getUniqueId(), targetId)) {
+                    clearConfirmMeta(player);
+                    player.sendMessage("§cPlayer kicked.");
+                    MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                    return;
+                }
+
+                player.sendMessage("§cYou cannot kick that player.");
+            }
+
+            case "BAN" -> {
+                if (teamService.banMember(player.getUniqueId(), targetId)) {
+                    clearConfirmMeta(player);
+                    player.sendMessage("§cPlayer banned from this team.");
+                    MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                    return;
+                }
+
+                player.sendMessage("§cYou cannot ban that player.");
+            }
+
+            default -> player.closeInventory();
+        }
+    }
+
+    private boolean isConfirmReady(Player player, String action) {
+        if (!player.hasMetadata(META_CONFIRM)) {
+            return false;
+        }
+
+        return player.getMetadata(META_CONFIRM).get(0).asString().equals(action);
+    }
+
+    private void markConfirmReady(Player player, String action) {
+        player.setMetadata(META_CONFIRM, new FixedMetadataValue(core, action));
+
+        String message = "§7Click confirm again to continue.";
+        player.sendActionBar(Component.text(message));
+        player.sendMessage(message);
+
+        core.getServer().getScheduler().runTaskLater(core, () -> {
+            if (!player.isOnline()) {
+                return;
+            }
+
+            if (!player.hasMetadata(META_CONFIRM)) {
+                return;
+            }
+
+            String current = player.getMetadata(META_CONFIRM).get(0).asString();
+            if (!current.equals(action)) {
+                return;
+            }
+
+            player.removeMetadata(META_CONFIRM, core);
+            player.sendActionBar(Component.text("§cAction timed out."));
+            player.sendMessage("§cAction timed out.");
+        }, 20L * 5L);
+    }
+
+    private void clearConfirmMeta(Player player) {
         player.removeMetadata(META_ACTION, core);
         player.removeMetadata(META_TARGET, core);
+        player.removeMetadata(META_CONFIRM, core);
     }
 }

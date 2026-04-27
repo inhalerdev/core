@@ -50,7 +50,7 @@ public final class TeamMemberGui {
                 )
         ));
 
-        inventory.setItem(12, item(
+        inventory.setItem(11, item(
                 Material.ORANGE_DYE,
                 "&6Demote",
                 List.of(
@@ -59,7 +59,7 @@ public final class TeamMemberGui {
                 )
         ));
 
-        inventory.setItem(14, item(
+        inventory.setItem(13, item(
                 Material.BOOK,
                 "&dView Stats",
                 List.of(
@@ -67,12 +67,21 @@ public final class TeamMemberGui {
                 )
         ));
 
-        inventory.setItem(16, item(
+        inventory.setItem(15, item(
                 Material.BARRIER,
                 "&cKick",
                 List.of(
                         "&7Remove this player from the team.",
                         "&8Admins can kick members."
+                )
+        ));
+
+        inventory.setItem(16, item(
+                Material.REDSTONE_BLOCK,
+                "&4Ban",
+                List.of(
+                        "&7Kick and block this player",
+                        "&7from joining for &d7 days&7."
                 )
         ));
 

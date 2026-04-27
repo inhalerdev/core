@@ -3,10 +3,12 @@ package net.mineacle.core.teams.command;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
-import net.mineacle.core.teams.model.TeamInviteRecord;
+import net.mineacle.core.common.gui.MenuHistory;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
+import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.service.TeamHomeService;
@@ -18,12 +20,18 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.metadata.FixedMetadataValue;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class TeamCommand implements CommandExecutor, TabCompleter {
+
+    private static final String META_TARGET = "simple_team_target";
+    private static final String META_ACTION = "simple_team_action";
+    private static final String META_CONFIRM = "simple_team_confirm";
 
     private final Core core;
     private final TeamService teamService;
@@ -59,7 +67,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         if (args.length == 0) {
             if (teamService.hasTeam(player.getUniqueId())) {
-                TeamsMainGui.open(core, player, teamService, inviteService);
+                MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             } else {
                 sendNoTeamPrompt(player);
             }
@@ -109,15 +117,19 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             }
 
             case "kick" -> {
-                return kick(player, args);
+                return confirmTargetAction(player, args, "KICK", "Kick Player", "§cUsage: /team kick <player>");
+            }
+
+            case "ban" -> {
+                return confirmTargetAction(player, args, "BAN", "Ban Player", "§cUsage: /team ban <player>");
             }
 
             case "promote" -> {
-                return role(player, args, TeamRole.ADMIN);
+                return confirmTargetAction(player, args, "PROMOTE", "Promote Player", "§cUsage: /team promote <player>");
             }
 
             case "demote" -> {
-                return role(player, args, TeamRole.MEMBER);
+                return confirmTargetAction(player, args, "DEMOTE", "Demote Player", "§cUsage: /team demote <player>");
             }
 
             case "home" -> {
@@ -162,7 +174,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage("§aTeam created.");
-        TeamsMainGui.open(core, player, teamService, inviteService);
+        MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
         return true;
     }
 
@@ -191,7 +203,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         player.sendMessage("§aInvite accepted.");
-        TeamsMainGui.open(core, player, teamService, inviteService);
+        MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
         return true;
     }
 
@@ -240,6 +252,11 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if (teamService.isBanned(team.teamId(), target.getUniqueId())) {
+            player.sendMessage("§cThat player is banned from joining this team.");
+            return true;
+        }
+
         if (!inviteService.createInvite(team.teamId(), player.getUniqueId(), target.getUniqueId())) {
             player.sendMessage("§cCould not send invite.");
             return true;
@@ -266,55 +283,44 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     }
 
     private boolean disband(Player player) {
-        if (!teamService.disbandTeam(player.getUniqueId())) {
+        if (!teamService.isFounder(player.getUniqueId())) {
             player.sendMessage("§cOnly the founder can disband the team.");
             return true;
         }
 
-        player.sendMessage("§cTeam disbanded.");
+        clearConfirmMeta(player);
+        player.setMetadata(META_ACTION, new FixedMetadataValue(core, "DISBAND"));
+
+        MenuHistory.openRoot(core, player, () -> TeamConfirmGui.open(core, player, "Disband Team"));
         return true;
     }
 
-    private boolean kick(Player player, String[] args) {
+    private boolean confirmTargetAction(Player player, String[] args, String action, String title, String usage) {
         if (args.length < 2) {
-            player.sendMessage("§cUsage: /team kick <player>");
+            player.sendMessage(usage);
             return true;
         }
 
         Player target = Bukkit.getPlayerExact(args[1]);
+
         if (target == null) {
             player.sendMessage("§cThat player must be online.");
             return true;
         }
 
-        if (!teamService.kickMember(player.getUniqueId(), target.getUniqueId())) {
-            player.sendMessage("§cYou cannot kick that player.");
+        TeamRecord playerTeam = teamService.getTeamByPlayer(player.getUniqueId());
+        TeamRecord targetTeam = teamService.getTeamByPlayer(target.getUniqueId());
+
+        if (playerTeam == null || targetTeam == null || !playerTeam.teamId().equals(targetTeam.teamId())) {
+            player.sendMessage("§cThat player is not in your team.");
             return true;
         }
 
-        player.sendMessage("§cPlayer kicked.");
-        target.sendMessage("§cYou were kicked from your team.");
-        return true;
-    }
+        clearConfirmMeta(player);
+        player.setMetadata(META_ACTION, new FixedMetadataValue(core, action));
+        player.setMetadata(META_TARGET, new FixedMetadataValue(core, target.getUniqueId().toString()));
 
-    private boolean role(Player player, String[] args, TeamRole role) {
-        if (args.length < 2) {
-            player.sendMessage(role == TeamRole.ADMIN ? "§cUsage: /team promote <player>" : "§cUsage: /team demote <player>");
-            return true;
-        }
-
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            player.sendMessage("§cThat player must be online.");
-            return true;
-        }
-
-        if (!teamService.setMemberRole(player.getUniqueId(), target.getUniqueId(), role)) {
-            player.sendMessage("§cYou cannot change that player's role.");
-            return true;
-        }
-
-        player.sendMessage(role == TeamRole.ADMIN ? "§aPlayer promoted." : "§aPlayer demoted.");
+        MenuHistory.openRoot(core, player, () -> TeamConfirmGui.open(core, player, title));
         return true;
     }
 
@@ -409,6 +415,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 .clickEvent(ClickEvent.runCommand("/team join")));
     }
 
+    private void clearConfirmMeta(Player player) {
+        player.removeMetadata(META_ACTION, core);
+        player.removeMetadata(META_TARGET, core);
+        player.removeMetadata(META_CONFIRM, core);
+    }
+
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         List<String> completions = new ArrayList<>();
@@ -431,6 +443,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                         "promote",
                         "demote",
                         "kick",
+                        "ban",
                         "leave",
                         "disband"
                 );
@@ -453,7 +466,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 && (args[0].equalsIgnoreCase("invite")
                 || args[0].equalsIgnoreCase("promote")
                 || args[0].equalsIgnoreCase("demote")
-                || args[0].equalsIgnoreCase("kick"))) {
+                || args[0].equalsIgnoreCase("kick")
+                || args[0].equalsIgnoreCase("ban"))) {
             String partial = args[1].toLowerCase(Locale.ROOT);
 
             for (Player online : Bukkit.getOnlinePlayers()) {

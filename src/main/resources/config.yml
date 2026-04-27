@@ -42,3 +42,9 @@ homes:
 teams:
   enabled: true
   max-members: 45
+  ban-days: 7
+
+tpa:
+  enabled: true
+  request-timeout-seconds: 60
+  teleport-delay-seconds: 5

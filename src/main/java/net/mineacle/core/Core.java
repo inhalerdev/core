@@ -8,6 +8,7 @@ import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
+import net.mineacle.core.tpa.TpaModule;
 
 import java.io.File;
 import java.io.IOException;
@@ -48,6 +49,7 @@ public final class Core extends JavaPlugin {
         try {
             registerModule(new HomesModule());
             registerModule(new TeamsModule());
+            registerModule(new TpaModule());
             getLogger().info("MineacleCore enabled successfully.");
         } catch (Exception exception) {
             getLogger().severe("Failed to enable MineacleCore: " + exception.getMessage());

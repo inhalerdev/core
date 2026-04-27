@@ -30,6 +30,22 @@ commands:
     description: Create, join, and manage your team
     permission: mineacleteams.use
 
+  tpa:
+    description: Request to teleport to a player
+    permission: mineacletpa.use
+
+  tpahere:
+    description: Request a player teleport to you
+    permission: mineacletpa.use
+
+  tpaccept:
+    description: Accept a teleport request
+    permission: mineacletpa.use
+
+  tpdeny:
+    description: Deny a teleport request
+    permission: mineacletpa.use
+
 permissions:
   mineaclehomes.use:
     default: true
@@ -44,4 +60,10 @@ permissions:
     default: true
 
   mineacleteams.admin:
+    default: op
+
+  mineacletpa.use:
+    default: true
+
+  mineacletpa.admin:
     default: op

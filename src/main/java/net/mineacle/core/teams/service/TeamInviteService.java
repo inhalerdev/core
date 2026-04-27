@@ -1,7 +1,8 @@
 package net.mineacle.core.teams.service;
 
-import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.model.TeamInviteRecord;
+import net.mineacle.core.teams.model.TeamRecord;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -26,6 +27,10 @@ public final class TeamInviteService {
             return false;
         }
 
+        if (teamService.isBanned(teamId, targetId)) {
+            return false;
+        }
+
         if (teamService.getTeamMembers(teamId).size() >= teamService.maxMembers()) {
             return false;
         }
@@ -46,6 +51,10 @@ public final class TeamInviteService {
         TeamInviteRecord invite = invites.remove(playerId);
 
         if (invite == null) {
+            return false;
+        }
+
+        if (teamService.isBanned(invite.teamId(), playerId)) {
             return false;
         }
 
