@@ -1,5 +1,6 @@
 package net.mineacle.core.teams.gui;
 
+import net.mineacle.core.Core;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -18,7 +19,7 @@ public final class TeamConfirmGui {
     private TeamConfirmGui() {
     }
 
-    public static void open(Player player, String actionName) {
+    public static void open(Core core, Player player, String actionName) {
         Inventory inventory = Bukkit.createInventory(null, 27, TITLE);
 
         inventory.setItem(11, item(
@@ -28,7 +29,7 @@ public final class TeamConfirmGui {
         ));
 
         inventory.setItem(13, item(
-                Material.PURPLE_STAINED_GLASS_PANE,
+                confirmActionMaterial(core),
                 "&f" + actionName,
                 List.of("&7Confirm this action")
         ));
@@ -42,8 +43,19 @@ public final class TeamConfirmGui {
         player.openInventory(inventory);
     }
 
-    public static void openDeleteHome(Player player) {
-        open(player, "Delete Team Home");
+    public static void openDeleteHome(Core core, Player player) {
+        open(core, player, "Delete Team Home");
+    }
+
+    private static Material confirmActionMaterial(Core core) {
+        String raw = core.getConfig().getString("gui.confirm-menu.action-material", "MAGENTA_DYE");
+
+        try {
+            Material material = Material.valueOf(raw.toUpperCase());
+            return material.isItem() ? material : Material.MAGENTA_DYE;
+        } catch (IllegalArgumentException exception) {
+            return Material.MAGENTA_DYE;
+        }
     }
 
     private static ItemStack item(Material material, String name, List<String> lore) {

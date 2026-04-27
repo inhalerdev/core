@@ -218,7 +218,7 @@ public final class TeamsGuiListener implements Listener {
 
         if (slot == 14) {
             player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
-            TeamConfirmGui.open(player, "Kick Player");
+            TeamConfirmGui.open(core, player, "Kick Player");
             return;
         }
 

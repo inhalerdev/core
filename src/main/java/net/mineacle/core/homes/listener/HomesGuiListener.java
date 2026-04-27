@@ -227,7 +227,7 @@ public final class HomesGuiListener implements Listener {
         if (slot == dyeSlot && isFounder) {
             player.setMetadata(META_TEAM_HOME_PENDING, new FixedMetadataValue(core, team.teamId()));
             player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, false));
-            TeamConfirmGui.openDeleteHome(player);
+            TeamConfirmGui.openDeleteHome(core, player);
         }
     }
 

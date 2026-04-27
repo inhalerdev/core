@@ -20,32 +20,23 @@ public final class ConfirmDeleteHomeGui {
         String title = ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.delete-title"));
         Inventory inventory = Bukkit.createInventory(null, 27, title);
 
-        inventory.setItem(
-                11,
-                item(
-                        Material.RED_STAINED_GLASS_PANE,
-                        "&cCancel",
-                        List.of("&7Do not continue")
-                )
-        );
+        inventory.setItem(11, item(
+                Material.RED_STAINED_GLASS_PANE,
+                "&cCancel",
+                List.of("&7Do not continue")
+        ));
 
-        inventory.setItem(
-                13,
-                item(
-                        Material.PURPLE_STAINED_GLASS_PANE,
-                        "&fDelete " + displayName,
-                        List.of("&7Confirm this action")
-                )
-        );
+        inventory.setItem(13, item(
+                confirmActionMaterial(core),
+                "&fDelete " + displayName,
+                List.of("&7Confirm this action")
+        ));
 
-        inventory.setItem(
-                15,
-                item(
-                        Material.LIME_STAINED_GLASS_PANE,
-                        "&aConfirm",
-                        List.of("&7Click to confirm")
-                )
-        );
+        inventory.setItem(15, item(
+                Material.LIME_STAINED_GLASS_PANE,
+                "&aConfirm",
+                List.of("&7Click to confirm")
+        ));
 
         player.openInventory(inventory);
     }
@@ -54,34 +45,36 @@ public final class ConfirmDeleteHomeGui {
         String title = ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.team-delete-title"));
         Inventory inventory = Bukkit.createInventory(null, 27, title);
 
-        inventory.setItem(
-                11,
-                item(
-                        Material.RED_STAINED_GLASS_PANE,
-                        "&cCancel",
-                        List.of("&7Do not continue")
-                )
-        );
+        inventory.setItem(11, item(
+                Material.RED_STAINED_GLASS_PANE,
+                "&cCancel",
+                List.of("&7Do not continue")
+        ));
 
-        inventory.setItem(
-                13,
-                item(
-                        Material.PURPLE_STAINED_GLASS_PANE,
-                        "&fDelete Team Home",
-                        List.of("&7Confirm this action")
-                )
-        );
+        inventory.setItem(13, item(
+                confirmActionMaterial(core),
+                "&fDelete Team Home",
+                List.of("&7Confirm this action")
+        ));
 
-        inventory.setItem(
-                15,
-                item(
-                        Material.LIME_STAINED_GLASS_PANE,
-                        "&aConfirm",
-                        List.of("&7Click to confirm")
-                )
-        );
+        inventory.setItem(15, item(
+                Material.LIME_STAINED_GLASS_PANE,
+                "&aConfirm",
+                List.of("&7Click to confirm")
+        ));
 
         player.openInventory(inventory);
+    }
+
+    private static Material confirmActionMaterial(Core core) {
+        String raw = core.getConfig().getString("gui.confirm-menu.action-material", "MAGENTA_DYE");
+
+        try {
+            Material material = Material.valueOf(raw.toUpperCase());
+            return material.isItem() ? material : Material.MAGENTA_DYE;
+        } catch (IllegalArgumentException exception) {
+            return Material.MAGENTA_DYE;
+        }
     }
 
     private static ItemStack item(Material material, String name, List<String> lore) {
