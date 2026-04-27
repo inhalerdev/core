@@ -34,50 +34,50 @@ public final class PlayerStatisticsGui implements Listener {
     private static final int SLOT_MOBS_KILLED = 16;
 
     public void open(Player viewer, UUID targetId) {
-        OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
         String name = displayName(targetId);
+        OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
 
         Inventory inventory = Bukkit.createInventory(null, SIZE, name + " Stats");
 
         inventory.setItem(SLOT_MONEY, statItem(
                 Material.EMERALD,
-                "&dMoney",
+                "&dMONEY",
                 "&7" + balance(target)
         ));
 
         inventory.setItem(SLOT_PLAYER_KILLS, statItem(
                 Material.DIAMOND_SWORD,
-                "&dKills",
+                "&dKILLS",
                 "&7" + compactStatistic(targetId, Statistic.PLAYER_KILLS)
         ));
 
         inventory.setItem(SLOT_DEATHS, statItem(
                 Material.SKELETON_SKULL,
-                "&dDeaths",
+                "&dDEATHS",
                 "&7" + compactStatistic(targetId, Statistic.DEATHS)
         ));
 
         inventory.setItem(SLOT_PLAYTIME, statItem(
                 Material.CLOCK,
-                "&dPlaytime",
+                "&dPLAYTIME",
                 "&7" + playtime(targetId)
         ));
 
         inventory.setItem(SLOT_BLOCKS_PLACED, statItem(
                 Material.GRASS_BLOCK,
-                "&dBlocks Placed",
+                "&dBLOCKS PLACED",
                 "&7" + compactStatistic(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)
         ));
 
         inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(
                 Material.COBBLESTONE,
-                "&dBlocks Broken",
+                "&dBLOCKS BROKEN",
                 "&7" + compactStatistic(targetId, Statistic.MINE_BLOCK, Material.STONE)
         ));
 
         inventory.setItem(SLOT_MOBS_KILLED, statItem(
                 Material.ZOMBIE_HEAD,
-                "&dMobs Killed",
+                "&dMOBS KILLED",
                 "&7" + compactStatistic(targetId, Statistic.MOB_KILLS)
         ));
 

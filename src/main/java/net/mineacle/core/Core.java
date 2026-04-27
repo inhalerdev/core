@@ -9,6 +9,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 import net.mineacle.core.tpa.TpaModule;
+import net.mineacle.core.stats.StatsModule;
 
 import java.io.File;
 import java.io.IOException;
@@ -50,6 +51,10 @@ public final class Core extends JavaPlugin {
             registerModule(new HomesModule());
             registerModule(new TeamsModule());
             registerModule(new TpaModule());
+            registerModule(new HomesModule());
+            registerModule(new TeamsModule());
+            registerModule(new TpaModule());
+            registerModule(new StatsModule());
             getLogger().info("MineacleCore enabled successfully.");
         } catch (Exception exception) {
             getLogger().severe("Failed to enable MineacleCore: " + exception.getMessage());

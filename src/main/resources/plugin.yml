@@ -34,6 +34,10 @@ commands:
     description: Request to teleport to a player
     permission: mineacletpa.use
 
+  stats:
+    description: View player stats
+    permission: mineaclestats.use
+
   tpahere:
     description: Request a player teleport to you
     permission: mineacletpa.use
@@ -66,4 +70,10 @@ permissions:
     default: true
 
   mineacletpa.admin:
+    default: op
+
+  mineaclestats.use:
+    default: true
+
+  mineaclestats.admin:
     default: op
