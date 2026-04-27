@@ -97,26 +97,31 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private boolean isTeamMainMenu(String title) {
-        TeamRecord team = null;
-
         for (Player online : core.getServer().getOnlinePlayers()) {
             TeamRecord possibleTeam = teamService.getTeamByPlayer(online.getUniqueId());
+
             if (possibleTeam == null) {
                 continue;
             }
 
-            String expectedTitleEnd = " (" + teamService.getTeamMembers(possibleTeam.teamId()).size() + "/" + teamService.maxMembers() + ")";
-            if (title.equals(possibleTeam.name() + expectedTitleEnd)) {
-                team = possibleTeam;
-                break;
+            String expectedTitle = possibleTeam.name()
+                    + " ("
+                    + teamService.getTeamMembers(possibleTeam.teamId()).size()
+                    + "/"
+                    + teamService.maxMembers()
+                    + ")";
+
+            if (title.equals(expectedTitle)) {
+                return true;
             }
         }
 
-        return team != null || title.endsWith(TeamsMainGui.TITLE_SUFFIX);
+        return title.endsWith(TeamsMainGui.TITLE_SUFFIX);
     }
 
     private void handleMainClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
         if (team == null) {
             player.closeInventory();
             return;
@@ -142,12 +147,11 @@ public final class TeamsGuiListener implements Listener {
                     && slot == members.size()
                     && members.size() < teamService.maxMembers()) {
                 player.closeInventory();
-                player.sendMessage("§7Click to autofill: §d/team invite <player>");
 
-                Component suggest = Component.text("§d/team invite ")
+                Component invitePrompt = Component.text("§7Type §d/team invite <player> §7to invite a player.")
                         .clickEvent(ClickEvent.suggestCommand("/team invite "));
 
-                player.sendMessage(suggest);
+                player.sendMessage(invitePrompt);
             }
 
             return;
@@ -163,6 +167,7 @@ public final class TeamsGuiListener implements Listener {
             }
 
             player.closeInventory();
+
             teleportService.begin(player, "Team Home", () -> {
                 player.teleport(home);
                 player.sendMessage("§aTeleported to Team Home.");
@@ -173,6 +178,7 @@ public final class TeamsGuiListener implements Listener {
         if (slot == 51 && teamService.isAdmin(player.getUniqueId())) {
             boolean newValue = !team.friendlyFire();
             teamService.setFriendlyFire(team.teamId(), newValue);
+
             player.sendMessage(newValue ? "§aTeam PVP enabled." : "§cTeam PVP disabled.");
             TeamsMainGui.open(core, player, teamService, inviteService);
         }
@@ -237,7 +243,7 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 13) {
+        if (slot == 14) {
             MenuHistory.openChild(
                     core,
                     player,
@@ -247,7 +253,7 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 14) {
+        if (slot == 16) {
             player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
 
             MenuHistory.openChild(
@@ -291,6 +297,7 @@ public final class TeamsGuiListener implements Listener {
                 player.sendMessage("§cPlayer kicked.");
                 player.removeMetadata(META_ACTION, core);
                 player.removeMetadata(META_TARGET, core);
+
                 MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
                 return;
             }

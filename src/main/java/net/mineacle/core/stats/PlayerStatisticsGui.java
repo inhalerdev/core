@@ -1,5 +1,6 @@
 package net.mineacle.core.stats;
 
+import net.mineacle.core.common.format.MoneyFormatter;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -15,28 +16,70 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 
 public final class PlayerStatisticsGui implements Listener {
 
+    private static final int SIZE = 27;
+
+    private static final int SLOT_MONEY = 10;
+    private static final int SLOT_PLAYER_KILLS = 11;
+    private static final int SLOT_DEATHS = 12;
+    private static final int SLOT_PLAYTIME = 13;
+    private static final int SLOT_BLOCKS_PLACED = 14;
+    private static final int SLOT_BLOCKS_BROKEN = 15;
+    private static final int SLOT_MOBS_KILLED = 16;
+
     public void open(Player viewer, UUID targetId) {
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
         String name = displayName(targetId);
 
-        Inventory inventory = Bukkit.createInventory(null, 27, name + " Stats");
+        Inventory inventory = Bukkit.createInventory(null, SIZE, name + " Stats");
 
-        inventory.setItem(4, playerHead(target, "&d" + name, List.of("&7Viewing player stats.")));
+        inventory.setItem(SLOT_MONEY, statItem(
+                Material.EMERALD,
+                "&dMONEY",
+                "&7" + balance(target)
+        ));
 
-        inventory.setItem(10, statItem(Material.EMERALD, "&dMoney", "&7" + VaultMoneyHook.formattedBalance(target)));
-        inventory.setItem(11, statItem(Material.DIAMOND_SWORD, "&dPlayer Kills", "&7" + statistic(targetId, Statistic.PLAYER_KILLS)));
-        inventory.setItem(12, statItem(Material.SKELETON_SKULL, "&dDeaths", "&7" + statistic(targetId, Statistic.DEATHS)));
-        inventory.setItem(13, statItem(Material.CLOCK, "&dPlaytime", "&7" + playtime(targetId)));
-        inventory.setItem(14, statItem(Material.GRASS_BLOCK, "&dBlocks Placed", "&7" + statistic(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)));
-        inventory.setItem(15, statItem(Material.COBBLESTONE, "&dBlocks Broken", "&7" + statistic(targetId, Statistic.MINE_BLOCK, Material.STONE)));
-        inventory.setItem(16, statItem(Material.ZOMBIE_HEAD, "&dMobs Killed", "&7" + statistic(targetId, Statistic.MOB_KILLS)));
+        inventory.setItem(SLOT_PLAYER_KILLS, statItem(
+                Material.DIAMOND_SWORD,
+                "&dKILLS",
+                "&7" + compactStatistic(targetId, Statistic.PLAYER_KILLS)
+        ));
+
+        inventory.setItem(SLOT_DEATHS, statItem(
+                Material.SKELETON_SKULL,
+                "&dDEATHS",
+                "&7" + compactStatistic(targetId, Statistic.DEATHS)
+        ));
+
+        inventory.setItem(SLOT_PLAYTIME, statItem(
+                Material.CLOCK,
+                "&dPLAYTIME",
+                "&7" + playtime(targetId)
+        ));
+
+        inventory.setItem(SLOT_BLOCKS_PLACED, statItem(
+                Material.GRASS_BLOCK,
+                "&dBLOCKS PLACED",
+                "&7" + compactStatistic(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)
+        ));
+
+        inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(
+                Material.COBBLESTONE,
+                "&dBLOCKS BROKEN",
+                "&7" + compactStatistic(targetId, Statistic.MINE_BLOCK, Material.STONE)
+        ));
+
+        inventory.setItem(SLOT_MOBS_KILLED, statItem(
+                Material.ZOMBIE_HEAD,
+                "&dMOBS KILLED",
+                "&7" + compactStatistic(targetId, Statistic.MOB_KILLS)
+        ));
 
         viewer.openInventory(inventory);
     }
@@ -50,6 +93,7 @@ public final class PlayerStatisticsGui implements Listener {
         }
 
         String title = ChatColor.stripColor(event.getView().getTitle());
+
         if (title != null && title.endsWith(" Stats")) {
             event.setCancelled(true);
         }
@@ -58,25 +102,10 @@ public final class PlayerStatisticsGui implements Listener {
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
         String title = ChatColor.stripColor(event.getView().getTitle());
+
         if (title != null && title.endsWith(" Stats")) {
             event.setCancelled(true);
         }
-    }
-
-    private ItemStack playerHead(OfflinePlayer owner, String name, List<String> lore) {
-        ItemStack item = new ItemStack(Material.PLAYER_HEAD);
-        ItemMeta rawMeta = item.getItemMeta();
-
-        if (!(rawMeta instanceof SkullMeta meta)) {
-            return item;
-        }
-
-        meta.setOwningPlayer(owner);
-        meta.setDisplayName(color(name));
-        meta.setLore(lore.stream().map(this::color).toList());
-        item.setItemMeta(meta);
-
-        return item;
     }
 
     private ItemStack statItem(Material material, String name, String value) {
@@ -90,36 +119,44 @@ public final class PlayerStatisticsGui implements Listener {
         meta.setDisplayName(color(name));
         meta.setLore(List.of(color(value)));
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(meta);
 
+        item.setItemMeta(meta);
         return item;
     }
 
-    private String statistic(UUID targetId, Statistic statistic) {
+    private String compactStatistic(UUID targetId, Statistic statistic) {
+        return MoneyFormatter.compact(rawStatistic(targetId, statistic));
+    }
+
+    private String compactStatistic(UUID targetId, Statistic statistic, Material material) {
+        return MoneyFormatter.compact(rawStatistic(targetId, statistic, material));
+    }
+
+    private int rawStatistic(UUID targetId, Statistic statistic) {
         Player player = Bukkit.getPlayer(targetId);
 
         if (player == null) {
-            return "0";
+            return 0;
         }
 
         try {
-            return String.valueOf(player.getStatistic(statistic));
+            return player.getStatistic(statistic);
         } catch (Exception ignored) {
-            return "0";
+            return 0;
         }
     }
 
-    private String statistic(UUID targetId, Statistic statistic, Material material) {
+    private int rawStatistic(UUID targetId, Statistic statistic, Material material) {
         Player player = Bukkit.getPlayer(targetId);
 
         if (player == null) {
-            return "0";
+            return 0;
         }
 
         try {
-            return String.valueOf(player.getStatistic(statistic, material));
+            return player.getStatistic(statistic, material);
         } catch (Exception ignored) {
-            return "0";
+            return 0;
         }
     }
 
@@ -132,8 +169,14 @@ public final class PlayerStatisticsGui implements Listener {
 
         int ticks = player.getStatistic(Statistic.PLAY_ONE_MINUTE);
         long totalSeconds = ticks / 20L;
-        long hours = totalSeconds / 3600L;
+
+        long days = totalSeconds / 86400L;
+        long hours = (totalSeconds % 86400L) / 3600L;
         long minutes = (totalSeconds % 3600L) / 60L;
+
+        if (days > 0) {
+            return days + "d " + hours + "h";
+        }
 
         if (hours > 0) {
             return hours + "h " + minutes + "m";
@@ -142,11 +185,38 @@ public final class PlayerStatisticsGui implements Listener {
         return minutes + "m";
     }
 
+    private String balance(OfflinePlayer player) {
+        if (player == null) {
+            return "$0";
+        }
+
+        try {
+            Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
+            Object economy = Bukkit.getServicesManager().load(economyClass);
+
+            if (economy == null) {
+                return "$0";
+            }
+
+            Method getBalance = economyClass.getMethod("getBalance", OfflinePlayer.class);
+            Object result = getBalance.invoke(economy, player);
+
+            if (!(result instanceof Number number)) {
+                return "$0";
+            }
+
+            return MoneyFormatter.money(number.doubleValue());
+        } catch (Throwable ignored) {
+            return "$0";
+        }
+    }
+
     private String displayName(UUID playerId) {
         Player online = Bukkit.getPlayer(playerId);
 
         if (online != null && online.getDisplayName() != null) {
             String stripped = ChatColor.stripColor(online.getDisplayName());
+
             if (stripped != null && !stripped.isBlank()) {
                 return stripped;
             }

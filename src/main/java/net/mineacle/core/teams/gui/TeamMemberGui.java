@@ -8,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -34,31 +35,45 @@ public final class TeamMemberGui {
         inventory.setItem(4, playerHead(
                 target,
                 "&d" + name,
-                List.of("&7Role: &d" + role)
+                List.of(
+                        "&7Rank: &d" + role,
+                        "&7Manage this team member."
+                )
         ));
 
         inventory.setItem(10, item(
                 Material.LIME_DYE,
                 "&aPromote",
-                List.of("&7Founder only")
+                List.of(
+                        "&7Promote this member.",
+                        "&8Founder only."
+                )
         ));
 
         inventory.setItem(12, item(
                 Material.ORANGE_DYE,
                 "&6Demote",
-                List.of("&7Founder only")
-        ));
-
-        inventory.setItem(13, item(
-                Material.BOOK,
-                "&dView Stats",
-                List.of("&7Open this player's stats")
+                List.of(
+                        "&7Demote this member.",
+                        "&8Founder only."
+                )
         ));
 
         inventory.setItem(14, item(
+                Material.BOOK,
+                "&dView Stats",
+                List.of(
+                        "&7Open this player's stats."
+                )
+        ));
+
+        inventory.setItem(16, item(
                 Material.BARRIER,
                 "&cKick",
-                List.of("&7Admins can kick members")
+                List.of(
+                        "&7Remove this player from the team.",
+                        "&8Admins can kick members."
+                )
         ));
 
         viewer.openInventory(inventory);
@@ -75,8 +90,8 @@ public final class TeamMemberGui {
         meta.setOwningPlayer(owner);
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamMemberGui::color).toList());
-
         item.setItemMeta(meta);
+
         return item;
     }
 
@@ -90,8 +105,9 @@ public final class TeamMemberGui {
 
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamMemberGui::color).toList());
-
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
+
         return item;
     }
 
