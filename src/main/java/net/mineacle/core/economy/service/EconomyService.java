@@ -3,7 +3,6 @@ package net.mineacle.core.economy.service;
 import net.kyori.adventure.text.Component;
 import net.mineacle.core.Core;
 import net.mineacle.core.common.format.MoneyFormatter;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -47,15 +46,30 @@ public final class EconomyService {
     }
 
     public void setBalance(UUID playerId, long cents) {
-        balances.put(playerId, Math.max(0L, cents));
+        long safeCents = Math.max(0L, cents);
+
+        if (safeCents <= 0L) {
+            balances.remove(playerId);
+        } else {
+            balances.put(playerId, safeCents);
+        }
+
         save();
     }
 
     public void give(UUID playerId, long cents) {
-        setBalance(playerId, getBalanceCents(playerId) + Math.max(0L, cents));
+        if (cents <= 0L) {
+            return;
+        }
+
+        setBalance(playerId, getBalanceCents(playerId) + cents);
     }
 
     public boolean take(UUID playerId, long cents) {
+        if (cents <= 0L) {
+            return false;
+        }
+
         long current = getBalanceCents(playerId);
 
         if (current < cents) {
@@ -90,10 +104,11 @@ public final class EconomyService {
         give(target.getUniqueId(), cents);
 
         String amount = format(cents);
+        String targetName = target.getName() == null ? target.getUniqueId().toString() : target.getName();
 
         sender.sendMessage(message("economy.pay-sent")
                 .replace("%amount%", amount)
-                .replace("%player%", target.getName() == null ? target.getUniqueId().toString() : target.getName()));
+                .replace("%player%", targetName));
 
         Player onlineTarget = target.getPlayer();
 
@@ -117,6 +132,10 @@ public final class EconomyService {
     }
 
     public void addOfflinePayment(UUID targetId, long cents, String senderName) {
+        if (cents <= 0L) {
+            return;
+        }
+
         OfflinePaymentNotice notice = offlinePayments.get(targetId);
 
         if (notice == null) {
@@ -139,11 +158,23 @@ public final class EconomyService {
     }
 
     public List<Map.Entry<UUID, Long>> topBalances(int limit) {
-        List<Map.Entry<UUID, Long>> entries = new ArrayList<>(balances.entrySet());
+        List<Map.Entry<UUID, Long>> entries = new ArrayList<>();
+
+        for (Map.Entry<UUID, Long> entry : balances.entrySet()) {
+            if (entry.getValue() == null) {
+                continue;
+            }
+
+            if (entry.getValue() < 1L) {
+                continue;
+            }
+
+            entries.add(entry);
+        }
 
         entries.sort(Map.Entry.<UUID, Long>comparingByValue(Comparator.reverseOrder()));
 
-        if (entries.size() <= limit) {
+        if (limit <= 0 || entries.size() <= limit) {
             return entries;
         }
 
@@ -189,6 +220,10 @@ public final class EconomyService {
         config.set("offline-payments", null);
 
         for (Map.Entry<UUID, Long> entry : balances.entrySet()) {
+            if (entry.getValue() == null || entry.getValue() <= 0L) {
+                continue;
+            }
+
             config.set("balances." + entry.getKey(), entry.getValue());
         }
 
@@ -211,7 +246,11 @@ public final class EconomyService {
         if (balanceSection != null) {
             for (String key : balanceSection.getKeys(false)) {
                 try {
-                    balances.put(UUID.fromString(key), config.getLong("balances." + key));
+                    long cents = config.getLong("balances." + key);
+
+                    if (cents >= 1L) {
+                        balances.put(UUID.fromString(key), cents);
+                    }
                 } catch (IllegalArgumentException ignored) {
                 }
             }
@@ -225,7 +264,9 @@ public final class EconomyService {
                     long totalCents = config.getLong("offline-payments." + key + ".total-cents", 0L);
                     List<String> senders = config.getStringList("offline-payments." + key + ".senders");
 
-                    offlinePayments.put(uuid, new OfflinePaymentNotice(totalCents, new HashSet<>(senders)));
+                    if (totalCents > 0L) {
+                        offlinePayments.put(uuid, new OfflinePaymentNotice(totalCents, new HashSet<>(senders)));
+                    }
                 } catch (IllegalArgumentException ignored) {
                 }
             }

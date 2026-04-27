@@ -39,7 +39,7 @@ public final class MenuCloseListener implements Listener {
                 || title.equalsIgnoreCase("Team Invite")
                 || title.equalsIgnoreCase("Confirm Action")
                 || title.equalsIgnoreCase("Teleport Request")
-                || title.startsWith("MOST MONEY (Page ")
+                || title.startsWith("Balance Top (Page ")
                 || title.endsWith(" Stats");
     }
 }

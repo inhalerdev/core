@@ -28,7 +28,6 @@ public final class BalTopGui {
 
     private static final int SLOT_PREVIOUS = 45;
     private static final int SLOT_REFRESH = 49;
-    private static final int SLOT_PAGE_INFO = 50;
     private static final int SLOT_NEXT = 53;
 
     private BalTopGui() {
@@ -55,51 +54,34 @@ public final class BalTopGui {
             Map.Entry<UUID, Long> entry = entries.get(index);
 
             int slot = index - start;
-            int position = index + 1;
+            int placement = index + 1;
 
             OfflinePlayer target = Bukkit.getOfflinePlayer(entry.getKey());
             String name = target.getName() == null ? entry.getKey().toString() : target.getName();
             String balance = economyService.format(entry.getValue());
 
-            inventory.setItem(slot, playerEntry(target, name, balance, position));
-        }
-
-        if (entries.isEmpty()) {
-            inventory.setItem(22, item(
-                    Material.BARRIER,
-                    "&cNo Balances",
-                    List.of("&7No balances have been recorded yet.")
-            ));
+            inventory.setItem(slot, playerEntry(target, name, balance, placement));
         }
 
         if (safePage > 0) {
             inventory.setItem(SLOT_PREVIOUS, item(
                     Material.ARROW,
-                    "&aPrevious",
-                    List.of("&fClick to go to the previous page")
+                    "&dPrevious Page",
+                    List.of("&7Click to go to the previous page.")
             ));
         }
 
         inventory.setItem(SLOT_REFRESH, item(
                 Material.EMERALD,
-                "&aBalance Top",
-                List.of("&fClick to refresh!")
-        ));
-
-        inventory.setItem(SLOT_PAGE_INFO, item(
-                Material.OAK_SIGN,
-                "&aPage " + (safePage + 1),
-                List.of(
-                        "&fCurrent page: &7" + (safePage + 1),
-                        "&fTotal pages: &7" + totalPages
-                )
+                "&dRefresh",
+                List.of("&7Click to refresh Balance Top.")
         ));
 
         if (safePage < totalPages - 1) {
             inventory.setItem(SLOT_NEXT, item(
                     Material.ARROW,
-                    "&aNext",
-                    List.of("&fClick to go to the next page")
+                    "&dNext Page",
+                    List.of("&7Click to go to the next page.")
             ));
         }
 
@@ -118,6 +100,14 @@ public final class BalTopGui {
         return player.getMetadata(META_PAGE).get(0).asInt();
     }
 
+    public static int entriesPerPage() {
+        return ENTRIES_PER_PAGE;
+    }
+
+    public static boolean isEntrySlot(int slot) {
+        return slot >= 0 && slot < ENTRIES_PER_PAGE;
+    }
+
     public static int previousSlot() {
         return SLOT_PREVIOUS;
     }
@@ -130,7 +120,7 @@ public final class BalTopGui {
         return SLOT_NEXT;
     }
 
-    private static ItemStack playerEntry(OfflinePlayer owner, String name, String balance, int position) {
+    private static ItemStack playerEntry(OfflinePlayer owner, String name, String balance, int placement) {
         ItemStack item = new ItemStack(Material.PLAYER_HEAD);
         ItemMeta rawMeta = item.getItemMeta();
 
@@ -139,8 +129,10 @@ public final class BalTopGui {
         }
 
         meta.setOwningPlayer(owner);
-        meta.setDisplayName(color("&a" + name));
-        meta.setLore(List.of(color("&fMoney: &7" + balance + " &a(#" + position + ")")));
+        meta.setDisplayName(color("&d" + name));
+        meta.setLore(List.of(
+                color("&fBalance: &7" + balance + " &d(#" + placement + ")")
+        ));
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
         item.setItemMeta(meta);
