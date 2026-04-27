@@ -23,6 +23,7 @@ public final class TeamService {
     private final Map<UUID, TeamMemberRecord> members = new HashMap<>();
     private final Map<String, String> nameIndex = new HashMap<>();
     private final Map<String, Map<UUID, TeamBanRecord>> bans = new HashMap<>();
+    private final Map<UUID, Boolean> teamChatEnabled = new HashMap<>();
 
     public TeamService(Core core) {
         this.core = core;
@@ -102,6 +103,33 @@ public final class TeamService {
         return member != null && member.role().isAdmin();
     }
 
+    public boolean isTeamChatEnabled(UUID playerId) {
+        return teamChatEnabled.getOrDefault(playerId, false);
+    }
+
+    public boolean toggleTeamChat(UUID playerId) {
+        boolean enabled = !isTeamChatEnabled(playerId);
+
+        if (enabled) {
+            teamChatEnabled.put(playerId, true);
+        } else {
+            teamChatEnabled.remove(playerId);
+        }
+
+        save();
+        return enabled;
+    }
+
+    public void setTeamChat(UUID playerId, boolean enabled) {
+        if (enabled) {
+            teamChatEnabled.put(playerId, true);
+        } else {
+            teamChatEnabled.remove(playerId);
+        }
+
+        save();
+    }
+
     public boolean isValidTeamName(String name) {
         if (name == null) {
             return false;
@@ -171,6 +199,7 @@ public final class TeamService {
         }
 
         members.remove(playerId);
+        teamChatEnabled.remove(playerId);
         save();
         return true;
     }
@@ -204,6 +233,7 @@ public final class TeamService {
         }
 
         members.remove(targetId);
+        teamChatEnabled.remove(targetId);
         save();
         return true;
     }
@@ -243,6 +273,7 @@ public final class TeamService {
                 .put(targetId, new TeamBanRecord(target.teamId(), targetId, actorId, createdAt, expiresAt));
 
         members.remove(targetId);
+        teamChatEnabled.remove(targetId);
         save();
         return true;
     }
@@ -311,6 +342,7 @@ public final class TeamService {
 
         for (UUID id : toRemove) {
             members.remove(id);
+            teamChatEnabled.remove(id);
         }
 
         core.getTeamsConfig().set("team-homes." + team.teamId(), null);
@@ -344,6 +376,7 @@ public final class TeamService {
         members.clear();
         nameIndex.clear();
         bans.clear();
+        teamChatEnabled.clear();
 
         FileConfiguration config = core.getTeamsConfig();
         ConfigurationSection teamsSection = config.getConfigurationSection("teams");
@@ -390,31 +423,42 @@ public final class TeamService {
         }
 
         ConfigurationSection bansSection = config.getConfigurationSection("team-bans");
-        if (bansSection == null) {
-            return;
+        if (bansSection != null) {
+            for (String teamId : bansSection.getKeys(false)) {
+                ConfigurationSection teamBansSection = config.getConfigurationSection("team-bans." + teamId);
+                if (teamBansSection == null) {
+                    continue;
+                }
+
+                for (String playerRaw : teamBansSection.getKeys(false)) {
+                    try {
+                        UUID playerId = UUID.fromString(playerRaw);
+                        String path = "team-bans." + teamId + "." + playerRaw;
+
+                        UUID bannedBy = UUID.fromString(config.getString(path + ".banned-by", playerRaw));
+                        long createdAt = config.getLong(path + ".created-at", System.currentTimeMillis());
+                        long expiresAt = config.getLong(path + ".expires-at", createdAt);
+
+                        TeamBanRecord record = new TeamBanRecord(teamId, playerId, bannedBy, createdAt, expiresAt);
+
+                        if (!record.expired()) {
+                            bans.computeIfAbsent(teamId, ignored -> new HashMap<>()).put(playerId, record);
+                        }
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
         }
 
-        for (String teamId : bansSection.getKeys(false)) {
-            ConfigurationSection teamBansSection = config.getConfigurationSection("team-bans." + teamId);
-            if (teamBansSection == null) {
-                continue;
-            }
-
-            for (String playerRaw : teamBansSection.getKeys(false)) {
+        ConfigurationSection chatSection = config.getConfigurationSection("team-chat");
+        if (chatSection != null) {
+            for (String uuidRaw : chatSection.getKeys(false)) {
                 try {
-                    UUID playerId = UUID.fromString(playerRaw);
-                    String path = "team-bans." + teamId + "." + playerRaw;
-
-                    UUID bannedBy = UUID.fromString(config.getString(path + ".banned-by", playerRaw));
-                    long createdAt = config.getLong(path + ".created-at", System.currentTimeMillis());
-                    long expiresAt = config.getLong(path + ".expires-at", createdAt);
-
-                    TeamBanRecord record = new TeamBanRecord(teamId, playerId, bannedBy, createdAt, expiresAt);
-
-                    if (!record.expired()) {
-                        bans.computeIfAbsent(teamId, ignored -> new HashMap<>()).put(playerId, record);
+                    UUID uuid = UUID.fromString(uuidRaw);
+                    if (config.getBoolean("team-chat." + uuidRaw, false)) {
+                        teamChatEnabled.put(uuid, true);
                     }
-                } catch (Exception ignored) {
+                } catch (IllegalArgumentException ignored) {
                 }
             }
         }
@@ -425,6 +469,7 @@ public final class TeamService {
 
         config.set("teams", null);
         config.set("team-bans", null);
+        config.set("team-chat", null);
 
         for (TeamRecord team : teams.values()) {
             String path = "teams." + team.teamId();
@@ -454,6 +499,12 @@ public final class TeamService {
                 config.set(path + ".banned-by", record.bannedBy().toString());
                 config.set(path + ".created-at", record.createdAt());
                 config.set(path + ".expires-at", record.expiresAt());
+            }
+        }
+
+        for (Map.Entry<UUID, Boolean> entry : teamChatEnabled.entrySet()) {
+            if (entry.getValue()) {
+                config.set("team-chat." + entry.getKey(), true);
             }
         }
 

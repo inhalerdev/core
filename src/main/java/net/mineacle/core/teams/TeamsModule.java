@@ -5,7 +5,9 @@ import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.command.TeamCommand;
+import net.mineacle.core.teams.listener.TeamChatListener;
 import net.mineacle.core.teams.listener.TeamCombatListener;
+import net.mineacle.core.teams.listener.TeamJoinListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
@@ -59,6 +61,16 @@ public final class TeamsModule extends Module {
 
         core.getServer().getPluginManager().registerEvents(
                 new TeamCombatListener(teamService),
+                core
+        );
+
+        core.getServer().getPluginManager().registerEvents(
+                new TeamChatListener(core, teamService),
+                core
+        );
+
+        core.getServer().getPluginManager().registerEvents(
+                new TeamJoinListener(core, teamService),
                 core
         );
 
