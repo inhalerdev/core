@@ -41,43 +41,43 @@ public final class PlayerStatisticsGui implements Listener {
 
         inventory.setItem(SLOT_MONEY, statItem(
                 Material.EMERALD,
-                "&dMONEY",
+                "&dMoney",
                 "&7" + balance(target)
         ));
 
         inventory.setItem(SLOT_PLAYER_KILLS, statItem(
                 Material.DIAMOND_SWORD,
-                "&dKILLS",
+                "&dKills",
                 "&7" + compactStatistic(targetId, Statistic.PLAYER_KILLS)
         ));
 
         inventory.setItem(SLOT_DEATHS, statItem(
                 Material.SKELETON_SKULL,
-                "&dDEATHS",
+                "&dDeaths",
                 "&7" + compactStatistic(targetId, Statistic.DEATHS)
         ));
 
         inventory.setItem(SLOT_PLAYTIME, statItem(
                 Material.CLOCK,
-                "&dPLAYTIME",
+                "&dPlaytime",
                 "&7" + playtime(targetId)
         ));
 
         inventory.setItem(SLOT_BLOCKS_PLACED, statItem(
                 Material.GRASS_BLOCK,
-                "&dBLOCKS PLACED",
+                "&dBlocks Placed",
                 "&7" + compactStatistic(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)
         ));
 
         inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(
                 Material.COBBLESTONE,
-                "&dBLOCKS BROKEN",
+                "&dBlocks Broken",
                 "&7" + compactStatistic(targetId, Statistic.MINE_BLOCK, Material.STONE)
         ));
 
         inventory.setItem(SLOT_MOBS_KILLED, statItem(
                 Material.ZOMBIE_HEAD,
-                "&dMOBS KILLED",
+                "&dMobs Killed",
                 "&7" + compactStatistic(targetId, Statistic.MOB_KILLS)
         ));
 
