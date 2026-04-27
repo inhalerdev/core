@@ -35,7 +35,7 @@ public final class BalTopGuiListener implements Listener {
 
         String title = ChatColor.stripColor(event.getView().getTitle());
 
-        if (!BalTopGui.isTitle(core, title)) {
+        if (!BalTopGui.isTitle(title)) {
             return;
         }
 
@@ -43,17 +43,17 @@ public final class BalTopGuiListener implements Listener {
 
         int page = BalTopGui.currentPage(player);
 
-        if (slot == 45) {
+        if (slot == BalTopGui.previousSlot()) {
             MenuHistory.openRoot(core, player, () -> BalTopGui.open(core, player, economyService, page - 1));
             return;
         }
 
-        if (slot == 49) {
+        if (slot == BalTopGui.refreshSlot()) {
             MenuHistory.openRoot(core, player, () -> BalTopGui.open(core, player, economyService, page));
             return;
         }
 
-        if (slot == 53) {
+        if (slot == BalTopGui.nextSlot()) {
             MenuHistory.openRoot(core, player, () -> BalTopGui.open(core, player, economyService, page + 1));
         }
     }

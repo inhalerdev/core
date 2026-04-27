@@ -60,5 +60,5 @@ economy:
 
 baltop:
   enabled: true
-  gui-title: "&dBalance Top"
+  gui-title: "Balance Top"
   entries-per-page: 45
