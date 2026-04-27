@@ -426,8 +426,6 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 options = List.of(
                         "invite",
                         "home",
-                        "sethome",
-                        "delhome",
                         "friendlyfire",
                         "pvp",
                         "promote",

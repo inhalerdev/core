@@ -11,6 +11,7 @@ import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
@@ -79,7 +80,7 @@ public final class TeamsMainGui {
         inventory.setItem(47, item(
                 Material.PURPLE_BANNER,
                 "&dTeam Home",
-                List.of("&7Click to teleport or set home")
+                List.of("&7Click to teleport to Team Home")
         ));
 
         inventory.setItem(49, item(
@@ -87,34 +88,23 @@ public final class TeamsMainGui {
                 "&dTeam Info",
                 List.of(
                         "&7Name: &d" + team.name(),
-                        "&7Members: &d" + memberCount + "&7/" + teamService.maxMembers(),
-                        "&7Friendly Fire: &d" + (team.friendlyFire() ? "Enabled" : "Disabled")
+                        "&7Members: &d" + memberCount + "&7/" + teamService.maxMembers()
                 )
         ));
 
         if (teamService.isAdmin(player.getUniqueId())) {
-            inventory.setItem(51, item(
-                    team.friendlyFire() ? Material.REDSTONE_TORCH : Material.LEVER,
-                    "&dFriendly Fire",
-                    List.of("&7Click to toggle")
-            ));
-        }
-
-        if (teamService.isFounder(player.getUniqueId())) {
-            inventory.setItem(53, item(
-                    Material.TNT,
-                    "&cDisband Team",
-                    List.of("&7Click to confirm")
-            ));
-        } else {
-            inventory.setItem(53, item(
-                    Material.RED_STAINED_GLASS_PANE,
-                    "&cLeave Team",
-                    List.of("&7Click to confirm")
-            ));
+            inventory.setItem(51, pvpItem(team.friendlyFire()));
         }
 
         player.openInventory(inventory);
+    }
+
+    private static ItemStack pvpItem(boolean friendlyFire) {
+        return item(
+                Material.DIAMOND_SWORD,
+                "&dTeam PVP",
+                List.of("&fCurrently: " + (friendlyFire ? "&aON" : "&cOFF"))
+        );
     }
 
     private static ItemStack playerHead(OfflinePlayer owner, String name, List<String> lore) {
@@ -128,8 +118,8 @@ public final class TeamsMainGui {
         meta.setOwningPlayer(owner);
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
-
         item.setItemMeta(meta);
+
         return item;
     }
 
@@ -143,8 +133,9 @@ public final class TeamsMainGui {
 
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
-
+        meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
         item.setItemMeta(meta);
+
         return item;
     }
 

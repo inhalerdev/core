@@ -3,6 +3,7 @@ package net.mineacle.core.teams;
 import net.mineacle.core.Core;
 import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.command.TeamCommand;
 import net.mineacle.core.teams.listener.TeamCombatListener;
 import net.mineacle.core.teams.listener.TeamsGuiListener;
@@ -18,6 +19,7 @@ public final class TeamsModule extends Module {
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
     private TeleportService teleportService;
+    private PlayerStatisticsGui playerStatisticsGui;
 
     @Override
     public String name() {
@@ -32,6 +34,7 @@ public final class TeamsModule extends Module {
         this.inviteService = new TeamInviteService(teamService);
         this.teamHomeService = new TeamHomeService(core, teamService);
         this.teleportService = new TeleportService(core);
+        this.playerStatisticsGui = new PlayerStatisticsGui();
 
         TeamCommand command = new TeamCommand(
                 core,
@@ -50,7 +53,7 @@ public final class TeamsModule extends Module {
         }
 
         core.getServer().getPluginManager().registerEvents(
-                new TeamsGuiListener(core, teamService, inviteService, teamHomeService, teleportService),
+                new TeamsGuiListener(core, teamService, inviteService, teamHomeService, teleportService, playerStatisticsGui),
                 core
         );
 
@@ -58,6 +61,8 @@ public final class TeamsModule extends Module {
                 new TeamCombatListener(teamService),
                 core
         );
+
+        core.getServer().getPluginManager().registerEvents(playerStatisticsGui, core);
     }
 
     @Override

@@ -49,6 +49,12 @@ public final class TeamMemberGui {
                 List.of("&7Founder only")
         ));
 
+        inventory.setItem(13, item(
+                Material.BOOK,
+                "&dView Stats",
+                List.of("&7Open this player's stats")
+        ));
+
         inventory.setItem(14, item(
                 Material.BARRIER,
                 "&cKick",

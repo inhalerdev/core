@@ -4,6 +4,7 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.homes.service.TeleportService;
+import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamMemberGui;
@@ -14,7 +15,6 @@ import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -35,19 +35,22 @@ public final class TeamsGuiListener implements Listener {
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
     private final TeleportService teleportService;
+    private final PlayerStatisticsGui playerStatisticsGui;
 
     public TeamsGuiListener(
             Core core,
             TeamService teamService,
             TeamInviteService inviteService,
             TeamHomeService teamHomeService,
-            TeleportService teleportService
+            TeleportService teleportService,
+            PlayerStatisticsGui playerStatisticsGui
     ) {
         this.core = core;
         this.teamService = teamService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
         this.teleportService = teleportService;
+        this.playerStatisticsGui = playerStatisticsGui;
     }
 
     @EventHandler
@@ -128,14 +131,8 @@ public final class TeamsGuiListener implements Listener {
             org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
 
             if (home == null) {
-                if (!teamService.isAdmin(player.getUniqueId())) {
-                    player.sendMessage("§cYour team does not have a home set.");
-                    return;
-                }
-
-                teamHomeService.setTeamHome(team.teamId(), player.getLocation());
-                player.sendMessage("§aTeam home set.");
-                TeamsMainGui.open(core, player, teamService, inviteService);
+                player.sendMessage("§cYour team does not have a home set.");
+                player.sendMessage("§7Team Home can only be set from the §d/homes §7menu.");
                 return;
             }
 
@@ -150,19 +147,8 @@ public final class TeamsGuiListener implements Listener {
         if (slot == 51 && teamService.isAdmin(player.getUniqueId())) {
             boolean newValue = !team.friendlyFire();
             teamService.setFriendlyFire(team.teamId(), newValue);
-            player.sendMessage(newValue ? "§aFriendly fire enabled." : "§cFriendly fire disabled.");
+            player.sendMessage(newValue ? "§aTeam PVP enabled." : "§cTeam PVP disabled.");
             TeamsMainGui.open(core, player, teamService, inviteService);
-            return;
-        }
-
-        if (slot == 53) {
-            if (teamService.isFounder(player.getUniqueId())) {
-                player.setMetadata(META_ACTION, new FixedMetadataValue(core, "DISBAND"));
-                TeamConfirmGui.open(player, "Disband Team");
-            } else {
-                player.setMetadata(META_ACTION, new FixedMetadataValue(core, "LEAVE"));
-                TeamConfirmGui.open(player, "Leave Team");
-            }
         }
     }
 
@@ -225,6 +211,11 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
+        if (slot == 13) {
+            playerStatisticsGui.open(player, targetId);
+            return;
+        }
+
         if (slot == 14) {
             player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
             TeamConfirmGui.open(player, "Kick Player");
@@ -256,42 +247,20 @@ public final class TeamsGuiListener implements Listener {
 
         String action = player.getMetadata(META_ACTION).get(0).asString();
 
-        switch (action) {
-            case "DISBAND" -> {
-                if (teamService.disbandTeam(player.getUniqueId())) {
-                    player.closeInventory();
-                    player.sendMessage("§cTeam disbanded.");
-                } else {
-                    player.sendMessage("§cYou cannot disband this team.");
-                }
+        if (action.equals("KICK")) {
+            if (!player.hasMetadata(META_TARGET)) {
+                player.closeInventory();
+                return;
             }
 
-            case "LEAVE" -> {
-                if (teamService.removeMember(player.getUniqueId())) {
-                    player.closeInventory();
-                    player.sendMessage("§cYou left your team.");
-                } else {
-                    player.sendMessage("§cYou cannot leave as founder.");
-                }
+            UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
+
+            if (teamService.kickMember(player.getUniqueId(), targetId)) {
+                player.sendMessage("§cPlayer kicked.");
+                TeamsMainGui.open(core, player, teamService, inviteService);
+            } else {
+                player.sendMessage("§cYou cannot kick that player.");
             }
-
-            case "KICK" -> {
-                if (!player.hasMetadata(META_TARGET)) {
-                    player.closeInventory();
-                    return;
-                }
-
-                UUID targetId = UUID.fromString(player.getMetadata(META_TARGET).get(0).asString());
-
-                if (teamService.kickMember(player.getUniqueId(), targetId)) {
-                    player.sendMessage("§cPlayer kicked.");
-                    TeamsMainGui.open(core, player, teamService, inviteService);
-                } else {
-                    player.sendMessage("§cYou cannot kick that player.");
-                }
-            }
-
-            default -> player.closeInventory();
         }
 
         player.removeMetadata(META_ACTION, core);

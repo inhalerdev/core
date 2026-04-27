@@ -18,21 +18,33 @@ public final class ConfirmDeleteHomeGui {
 
     public static void openPlayerDelete(Core core, Player player, int id, String displayName) {
         String title = ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.delete-title"));
-        Inventory inventory = Bukkit.createInventory(null, 9 * 3, title);
+        Inventory inventory = Bukkit.createInventory(null, 27, title);
 
         inventory.setItem(
                 11,
-                item(Material.RED_STAINED_GLASS_PANE, "&cCancel", List.of("&fClick to cancel deletion"))
+                item(
+                        Material.RED_STAINED_GLASS_PANE,
+                        "&cCancel",
+                        List.of("&7Do not continue")
+                )
         );
 
         inventory.setItem(
                 13,
-                item(Material.PURPLE_DYE, "&d" + displayName, List.of("&7This will delete this home"))
+                item(
+                        Material.PURPLE_STAINED_GLASS_PANE,
+                        "&fDelete " + displayName,
+                        List.of("&7Confirm this action")
+                )
         );
 
         inventory.setItem(
                 15,
-                item(Material.LIME_STAINED_GLASS_PANE, "&aConfirm", List.of("&fClick twice to confirm deletion"))
+                item(
+                        Material.LIME_STAINED_GLASS_PANE,
+                        "&aConfirm",
+                        List.of("&7Click to confirm")
+                )
         );
 
         player.openInventory(inventory);
@@ -40,21 +52,33 @@ public final class ConfirmDeleteHomeGui {
 
     public static void openTeamDelete(Core core, Player player) {
         String title = ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.team-delete-title"));
-        Inventory inventory = Bukkit.createInventory(null, 9 * 3, title);
+        Inventory inventory = Bukkit.createInventory(null, 27, title);
 
         inventory.setItem(
                 11,
-                item(Material.RED_STAINED_GLASS_PANE, "&cCancel", List.of("&fClick to cancel deletion"))
+                item(
+                        Material.RED_STAINED_GLASS_PANE,
+                        "&cCancel",
+                        List.of("&7Do not continue")
+                )
         );
 
         inventory.setItem(
                 13,
-                item(Material.PURPLE_BANNER, "&dTeam Home", List.of("&7This will delete your team home"))
+                item(
+                        Material.PURPLE_STAINED_GLASS_PANE,
+                        "&fDelete Team Home",
+                        List.of("&7Confirm this action")
+                )
         );
 
         inventory.setItem(
                 15,
-                item(Material.LIME_STAINED_GLASS_PANE, "&aConfirm", List.of("&fClick twice to confirm deletion"))
+                item(
+                        Material.LIME_STAINED_GLASS_PANE,
+                        "&aConfirm",
+                        List.of("&7Click to confirm")
+                )
         );
 
         player.openInventory(inventory);
@@ -64,8 +88,14 @@ public final class ConfirmDeleteHomeGui {
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
 
+        if (meta == null) {
+            return item;
+        }
+
         meta.setDisplayName(ChatColor.translateAlternateColorCodes('&', name));
-        meta.setLore(lore.stream().map(line -> ChatColor.translateAlternateColorCodes('&', line)).toList());
+        meta.setLore(lore.stream()
+                .map(line -> ChatColor.translateAlternateColorCodes('&', line))
+                .toList());
 
         item.setItemMeta(meta);
         return item;

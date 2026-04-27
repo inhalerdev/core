@@ -22,19 +22,19 @@ public final class TeamConfirmGui {
         Inventory inventory = Bukkit.createInventory(null, 27, TITLE);
 
         inventory.setItem(11, item(
-                Material.RED_CONCRETE,
+                Material.RED_STAINED_GLASS_PANE,
                 "&cCancel",
                 List.of("&7Do not continue")
         ));
 
         inventory.setItem(13, item(
-                Material.PAPER,
+                Material.PURPLE_STAINED_GLASS_PANE,
                 "&f" + actionName,
                 List.of("&7Confirm this action")
         ));
 
         inventory.setItem(15, item(
-                Material.LIME_CONCRETE,
+                Material.LIME_STAINED_GLASS_PANE,
                 "&aConfirm",
                 List.of("&7Click to confirm")
         ));
@@ -57,6 +57,7 @@ public final class TeamConfirmGui {
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamConfirmGui::color).toList());
         item.setItemMeta(meta);
+
         return item;
     }
 
