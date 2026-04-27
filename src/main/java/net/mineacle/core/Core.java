@@ -1,6 +1,7 @@
 package net.mineacle.core;
 
 import net.mineacle.core.bootstrap.Module;
+import net.mineacle.core.common.gui.MenuCloseListener;
 import net.mineacle.core.homes.HomesModule;
 import net.mineacle.core.teams.TeamsModule;
 import org.bukkit.ChatColor;
@@ -41,6 +42,8 @@ public final class Core extends JavaPlugin {
         loadMessagesFile();
         loadHomesFile();
         loadTeamsFile();
+
+        getServer().getPluginManager().registerEvents(new MenuCloseListener(this), this);
 
         try {
             registerModule(new HomesModule());

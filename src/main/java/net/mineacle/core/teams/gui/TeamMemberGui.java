@@ -61,12 +61,6 @@ public final class TeamMemberGui {
                 List.of("&7Admins can kick members")
         ));
 
-        inventory.setItem(22, item(
-                Material.ARROW,
-                "&dTeam Menu",
-                List.of("&7Return to team menu")
-        ));
-
         viewer.openInventory(inventory);
     }
 

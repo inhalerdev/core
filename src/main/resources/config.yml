@@ -6,9 +6,9 @@ homes:
   plus-permission: mineacle.plus
 
   allowed-worlds:
-    enabled: false
+    enabled: true
     worlds:
-      - world
+      - origins
       - world_nether
       - world_the_end
 
@@ -30,9 +30,9 @@ homes:
     delete-confirm-timeout-seconds: 5
 
     allowed-worlds:
-      enabled: false
+      enabled: true
       worlds:
-        - world
+        - origins
         - world_nether
         - world_the_end
 

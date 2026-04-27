@@ -21,7 +21,7 @@ import java.util.UUID;
 
 public final class TeamsMainGui {
 
-    public static final String TITLE_PREFIX = "Team: ";
+    public static final String TITLE_SUFFIX = ")";
 
     private TeamsMainGui() {
     }
@@ -37,10 +37,11 @@ public final class TeamsMainGui {
         }
 
         int memberCount = teamService.getTeamMembers(team.teamId()).size();
+
         Inventory inventory = Bukkit.createInventory(
                 null,
                 54,
-                ChatColor.DARK_GRAY + TITLE_PREFIX + team.name() + " (" + memberCount + "/" + teamService.maxMembers() + ")"
+                ChatColor.DARK_GRAY + team.name() + " (" + memberCount + "/" + teamService.maxMembers() + ")"
         );
 
         int slot = 0;

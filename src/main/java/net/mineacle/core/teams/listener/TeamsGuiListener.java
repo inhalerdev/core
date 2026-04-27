@@ -3,6 +3,7 @@ package net.mineacle.core.teams.listener;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
+import net.mineacle.core.common.gui.MenuHistory;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
@@ -71,7 +72,7 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (title.startsWith(TeamsMainGui.TITLE_PREFIX)) {
+        if (isTeamMainMenu(title)) {
             event.setCancelled(true);
             handleMainClick(player, slot);
             return;
@@ -95,6 +96,25 @@ public final class TeamsGuiListener implements Listener {
         }
     }
 
+    private boolean isTeamMainMenu(String title) {
+        TeamRecord team = null;
+
+        for (Player online : core.getServer().getOnlinePlayers()) {
+            TeamRecord possibleTeam = teamService.getTeamByPlayer(online.getUniqueId());
+            if (possibleTeam == null) {
+                continue;
+            }
+
+            String expectedTitleEnd = " (" + teamService.getTeamMembers(possibleTeam.teamId()).size() + "/" + teamService.maxMembers() + ")";
+            if (title.equals(possibleTeam.name() + expectedTitleEnd)) {
+                team = possibleTeam;
+                break;
+            }
+        }
+
+        return team != null || title.endsWith(TeamsMainGui.TITLE_SUFFIX);
+    }
+
     private void handleMainClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
         if (team == null) {
@@ -108,7 +128,13 @@ public final class TeamsGuiListener implements Listener {
             if (slot < members.size()) {
                 UUID targetId = members.get(slot);
                 player.setMetadata(META_TARGET, new FixedMetadataValue(core, targetId.toString()));
-                TeamMemberGui.open(player, targetId, teamService);
+
+                MenuHistory.openChild(
+                        core,
+                        player,
+                        () -> TeamsMainGui.open(core, player, teamService, inviteService),
+                        () -> TeamMemberGui.open(player, targetId, teamService)
+                );
                 return;
             }
 
@@ -156,7 +182,7 @@ public final class TeamsGuiListener implements Listener {
         if (slot == 11) {
             if (inviteService.acceptInvite(player.getUniqueId())) {
                 player.sendMessage("§aInvite accepted.");
-                TeamsMainGui.open(core, player, teamService, inviteService);
+                MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             } else {
                 player.closeInventory();
                 player.sendMessage("§cCould not accept invite.");
@@ -212,18 +238,24 @@ public final class TeamsGuiListener implements Listener {
         }
 
         if (slot == 13) {
-            playerStatisticsGui.open(player, targetId);
+            MenuHistory.openChild(
+                    core,
+                    player,
+                    () -> TeamMemberGui.open(player, targetId, teamService),
+                    () -> playerStatisticsGui.open(player, targetId)
+            );
             return;
         }
 
         if (slot == 14) {
             player.setMetadata(META_ACTION, new FixedMetadataValue(core, "KICK"));
-            TeamConfirmGui.open(core, player, "Kick Player");
-            return;
-        }
 
-        if (slot == 22) {
-            TeamsMainGui.open(core, player, teamService, inviteService);
+            MenuHistory.openChild(
+                    core,
+                    player,
+                    () -> TeamMemberGui.open(player, targetId, teamService),
+                    () -> TeamConfirmGui.open(core, player, "Kick Player")
+            );
         }
     }
 
@@ -257,10 +289,13 @@ public final class TeamsGuiListener implements Listener {
 
             if (teamService.kickMember(player.getUniqueId(), targetId)) {
                 player.sendMessage("§cPlayer kicked.");
-                TeamsMainGui.open(core, player, teamService, inviteService);
-            } else {
-                player.sendMessage("§cYou cannot kick that player.");
+                player.removeMetadata(META_ACTION, core);
+                player.removeMetadata(META_TARGET, core);
+                MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                return;
             }
+
+            player.sendMessage("§cYou cannot kick that player.");
         }
 
         player.removeMetadata(META_ACTION, core);
