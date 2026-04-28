@@ -1,6 +1,6 @@
 package net.mineacle.core.stats;
 
-import net.mineacle.core.common.format.MoneyFormatter;
+import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -17,7 +17,6 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import java.lang.reflect.Method;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,51 +33,51 @@ public final class PlayerStatisticsGui implements Listener {
     private static final int SLOT_MOBS_KILLED = 16;
 
     public void open(Player viewer, UUID targetId) {
-        String name = displayName(targetId);
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
+        String displayName = placeholder(target, "%mineacle_displayname%", fallbackName(target));
 
-        Inventory inventory = Bukkit.createInventory(null, SIZE, name + " Stats");
+        Inventory inventory = Bukkit.createInventory(null, SIZE, displayName + " Stats");
 
         inventory.setItem(SLOT_MONEY, statItem(
                 Material.EMERALD,
                 "&dMoney",
-                "&7" + balance(target)
+                "&7" + placeholder(target, "%mineacle_balance%", "$0")
         ));
 
         inventory.setItem(SLOT_PLAYER_KILLS, statItem(
                 Material.DIAMOND_SWORD,
                 "&dKills",
-                "&7" + compactStatistic(targetId, Statistic.PLAYER_KILLS)
+                "&7" + placeholder(target, "%mineacle_stats_kills%", fallbackStatistic(targetId, Statistic.PLAYER_KILLS))
         ));
 
         inventory.setItem(SLOT_DEATHS, statItem(
                 Material.SKELETON_SKULL,
                 "&dDeaths",
-                "&7" + compactStatistic(targetId, Statistic.DEATHS)
+                "&7" + placeholder(target, "%mineacle_stats_deaths%", fallbackStatistic(targetId, Statistic.DEATHS))
         ));
 
         inventory.setItem(SLOT_PLAYTIME, statItem(
                 Material.CLOCK,
                 "&dPlaytime",
-                "&7" + playtime(targetId)
+                "&7" + placeholder(target, "%mineacle_stats_playtime%", fallbackPlaytime(targetId))
         ));
 
         inventory.setItem(SLOT_BLOCKS_PLACED, statItem(
                 Material.GRASS_BLOCK,
                 "&dBlocks Placed",
-                "&7" + compactStatistic(targetId, Statistic.USE_ITEM, Material.GRASS_BLOCK)
+                "&7" + placeholder(target, "%mineacle_stats_blocks_placed%", "0")
         ));
 
         inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(
                 Material.COBBLESTONE,
                 "&dBlocks Broken",
-                "&7" + compactStatistic(targetId, Statistic.MINE_BLOCK, Material.STONE)
+                "&7" + placeholder(target, "%mineacle_stats_blocks_broken%", "0")
         ));
 
         inventory.setItem(SLOT_MOBS_KILLED, statItem(
                 Material.ZOMBIE_HEAD,
                 "&dMobs Killed",
-                "&7" + compactStatistic(targetId, Statistic.MOB_KILLS)
+                "&7" + placeholder(target, "%mineacle_stats_mobs_killed%", fallbackStatistic(targetId, Statistic.MOB_KILLS))
         ));
 
         viewer.openInventory(inventory);
@@ -96,6 +95,7 @@ public final class PlayerStatisticsGui implements Listener {
 
         if (title != null && title.endsWith(" Stats")) {
             event.setCancelled(true);
+            event.setResult(org.bukkit.event.Event.Result.DENY);
         }
     }
 
@@ -105,6 +105,7 @@ public final class PlayerStatisticsGui implements Listener {
 
         if (title != null && title.endsWith(" Stats")) {
             event.setCancelled(true);
+            event.setResult(org.bukkit.event.Event.Result.DENY);
         }
     }
 
@@ -124,43 +125,52 @@ public final class PlayerStatisticsGui implements Listener {
         return item;
     }
 
-    private String compactStatistic(UUID targetId, Statistic statistic) {
-        return MoneyFormatter.compact(rawStatistic(targetId, statistic));
-    }
+    private String placeholder(OfflinePlayer target, String placeholder, String fallback) {
+        if (target == null) {
+            return fallback;
+        }
 
-    private String compactStatistic(UUID targetId, Statistic statistic, Material material) {
-        return MoneyFormatter.compact(rawStatistic(targetId, statistic, material));
-    }
-
-    private int rawStatistic(UUID targetId, Statistic statistic) {
-        Player player = Bukkit.getPlayer(targetId);
-
-        if (player == null) {
-            return 0;
+        if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") == null) {
+            return fallback;
         }
 
         try {
-            return player.getStatistic(statistic);
-        } catch (Exception ignored) {
-            return 0;
+            String parsed = PlaceholderAPI.setPlaceholders(target, placeholder);
+
+            if (parsed == null || parsed.isBlank() || parsed.equalsIgnoreCase(placeholder)) {
+                return fallback;
+            }
+
+            return parsed;
+        } catch (Throwable ignored) {
+            return fallback;
         }
     }
 
-    private int rawStatistic(UUID targetId, Statistic statistic, Material material) {
+    private String fallbackName(OfflinePlayer target) {
+        if (target == null) {
+            return "Unknown";
+        }
+
+        String name = target.getName();
+        return name == null || name.isBlank() ? target.getUniqueId().toString() : name;
+    }
+
+    private String fallbackStatistic(UUID targetId, Statistic statistic) {
         Player player = Bukkit.getPlayer(targetId);
 
         if (player == null) {
-            return 0;
+            return "0";
         }
 
         try {
-            return player.getStatistic(statistic, material);
+            return String.valueOf(player.getStatistic(statistic));
         } catch (Exception ignored) {
-            return 0;
+            return "0";
         }
     }
 
-    private String playtime(UUID targetId) {
+    private String fallbackPlaytime(UUID targetId) {
         Player player = Bukkit.getPlayer(targetId);
 
         if (player == null) {
@@ -183,47 +193,6 @@ public final class PlayerStatisticsGui implements Listener {
         }
 
         return minutes + "m";
-    }
-
-    private String balance(OfflinePlayer player) {
-        if (player == null) {
-            return "$0";
-        }
-
-        try {
-            Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
-            Object economy = Bukkit.getServicesManager().load(economyClass);
-
-            if (economy == null) {
-                return "$0";
-            }
-
-            Method getBalance = economyClass.getMethod("getBalance", OfflinePlayer.class);
-            Object result = getBalance.invoke(economy, player);
-
-            if (!(result instanceof Number number)) {
-                return "$0";
-            }
-
-            return MoneyFormatter.money(number.doubleValue());
-        } catch (Throwable ignored) {
-            return "$0";
-        }
-    }
-
-    private String displayName(UUID playerId) {
-        Player online = Bukkit.getPlayer(playerId);
-
-        if (online != null && online.getDisplayName() != null) {
-            String stripped = ChatColor.stripColor(online.getDisplayName());
-
-            if (stripped != null && !stripped.isBlank()) {
-                return stripped;
-            }
-        }
-
-        OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerId);
-        return offlinePlayer.getName() == null ? playerId.toString() : offlinePlayer.getName();
     }
 
     private String color(String input) {
