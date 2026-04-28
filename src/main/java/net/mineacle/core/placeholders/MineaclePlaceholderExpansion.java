@@ -2,6 +2,8 @@ package net.mineacle.core.placeholders;
 
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import net.mineacle.core.Core;
+import net.mineacle.core.chat.ChatModule;
+import net.mineacle.core.chat.service.NicknameService;
 import net.mineacle.core.economy.service.EconomyService;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
@@ -74,6 +76,10 @@ public final class MineaclePlaceholderExpansion extends PlaceholderExpansion {
 
             case "nickname", "nick", "player_nickname", "player_nick" -> nickname(player);
 
+            case "chat_displayname", "chat_display_name" -> chatDisplayName(player);
+
+            case "tab_displayname", "tab_display_name" -> tabDisplayName(player);
+
             case "balance", "balance_formatted", "money", "money_formatted" ->
                     economyService.format(economyService.getBalanceCents(uuid));
 
@@ -130,21 +136,47 @@ public final class MineaclePlaceholderExpansion extends PlaceholderExpansion {
     }
 
     private String username(OfflinePlayer player) {
+        NicknameService service = ChatModule.nicknameService();
+
+        if (service != null) {
+            return service.username(player);
+        }
+
         return player.getName() == null ? player.getUniqueId().toString() : player.getName();
     }
 
     private String displayName(OfflinePlayer player) {
-        String nickname = nickname(player);
+        NicknameService service = ChatModule.nicknameService();
 
-        if (!nickname.isBlank()) {
-            return nickname;
+        if (service != null) {
+            return service.displayName(player);
         }
 
         return username(player);
     }
 
     private String nickname(OfflinePlayer player) {
+        NicknameService service = ChatModule.nicknameService();
+
+        if (service != null) {
+            return service.nickname(player);
+        }
+
         return "";
+    }
+
+    private String chatDisplayName(OfflinePlayer player) {
+        NicknameService service = ChatModule.nicknameService();
+
+        if (service != null) {
+            return service.rawChatDisplayName(player);
+        }
+
+        return "&#bbbbbb" + username(player);
+    }
+
+    private String tabDisplayName(OfflinePlayer player) {
+        return chatDisplayName(player);
     }
 
     private String rawMoney(long cents) {

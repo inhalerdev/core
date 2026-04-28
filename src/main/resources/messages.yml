@@ -234,3 +234,31 @@ baltop:
 
   next-title: "&dNext Page"
   next-lore: "&7Click to view the next page."
+
+chat:
+  private-message-format: "&d%sender% &#bbbbbb-> &d%receiver%&#bbbbbb: &#bbbbbb%message%"
+
+  message-usage: "&cUsage: /msg <player> <message>"
+  reply-usage: "&cUsage: /r <message>"
+  ignore-usage: "&cUsage: /ignore <player>"
+  nick-usage: "&cUsage: /nick <nickname|reset>"
+  realname-usage: "&cUsage: /realname <nickname>"
+
+  no-reply-target: "&cYou have nobody to reply to."
+  player-not-found: "&cThat player is not online."
+  cannot-message-self: "&cYou cannot message yourself."
+  cannot-ignore-self: "&cYou cannot ignore yourself."
+  target-ignoring-you: "&cThat player is ignoring you."
+
+  now-ignoring: "&#bbbbbbYou are now ignoring &d%player%&#bbbbbb."
+  no-longer-ignoring: "&#bbbbbbYou are no longer ignoring &d%player%&#bbbbbb."
+  ignore-list-empty: "&#bbbbbbYou are not ignoring anyone."
+  ignore-list-header: "&dIgnored Players:"
+  ignore-list-line: "&#bbbbbb- &d%player%"
+
+  nick-set: "&#bbbbbbYour nickname is now &d%nickname%&#bbbbbb."
+  nick-reset: "&#bbbbbbYour nickname has been reset."
+  nick-invalid: "&cNicknames must be %max% characters or shorter and only use allowed characters."
+
+  realname-not-found: "&cNo player was found with that nickname."
+  realname-result: "&d%nickname% &#bbbbbbbelongs to &d%player%&#bbbbbb."

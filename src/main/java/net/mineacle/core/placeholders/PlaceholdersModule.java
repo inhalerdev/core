@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 public final class PlaceholdersModule extends Module {
 
     private MineaclePlaceholderExpansion expansion;
+    private MineacleTeamsPlaceholderExpansion teamsExpansion;
 
     @Override
     public String name() {
@@ -40,7 +41,10 @@ public final class PlaceholdersModule extends Module {
         this.expansion = new MineaclePlaceholderExpansion(core, economyService, teamService);
         this.expansion.register();
 
-        core.getLogger().info("Registered Mineacle PlaceholderAPI expansion.");
+        this.teamsExpansion = new MineacleTeamsPlaceholderExpansion(core, teamService);
+        this.teamsExpansion.register();
+
+        core.getLogger().info("Registered Mineacle PlaceholderAPI expansions.");
     }
 
     @Override
@@ -48,6 +52,11 @@ public final class PlaceholdersModule extends Module {
         if (expansion != null) {
             expansion.unregister();
             expansion = null;
+        }
+
+        if (teamsExpansion != null) {
+            teamsExpansion.unregister();
+            teamsExpansion = null;
         }
     }
 }

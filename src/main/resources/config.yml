@@ -62,3 +62,24 @@ baltop:
   enabled: true
   gui-title: "Balance Top"
   entries-per-page: 45
+
+nickname:
+  enabled: true
+  prefix: "."
+  max-length: 15
+  allowed-regex: "^[a-zA-Z_0-9&§]+$"
+  op-name-color: "#FF80FF"
+  default-name-color: "#bbbbbb"
+
+chat:
+  enabled: true
+  format: "%mineacle_chat_displayname%&#bbbbbb: &#bbbbbb%message%"
+
+  worlds:
+    mode: global
+    groups:
+      global:
+        - world
+        - world_nether
+        - world_the_end
+        - origins

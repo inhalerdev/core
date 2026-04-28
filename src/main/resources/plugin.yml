@@ -71,6 +71,32 @@ commands:
     aliases: [balancetop]
     permission: mineaclebaltop.use
 
+  msg:
+    description: Send a private message
+    aliases: [ tell, w, whisper, m ]
+    permission: mineaclechat.message
+
+  r:
+    description: Reply to your last private message
+    aliases: [ reply ]
+    permission: mineaclechat.message
+
+  ignore:
+    description: Ignore a player
+    permission: mineaclechat.ignore
+
+  ignorelist:
+    description: View ignored players
+    permission: mineaclechat.ignore
+
+  nick:
+    description: Set your nickname
+    permission: mineaclechat.nick
+
+  realname:
+    description: Check a player's real name from nickname
+    permission: mineaclechat.realname
+
 permissions:
   mineaclehomes.use:
     default: true
@@ -112,4 +138,19 @@ permissions:
     default: true
 
   mineaclebaltop.admin:
+    default: op
+
+  mineaclechat.message:
+    default: true
+
+  mineaclechat.ignore:
+    default: true
+
+  mineaclechat.nick:
+    default: true
+
+  mineaclechat.realname:
+    default: true
+
+  mineaclechat.admin:
     default: op

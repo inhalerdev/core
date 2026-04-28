@@ -2,14 +2,15 @@ package net.mineacle.core;
 
 import net.mineacle.core.baltop.BalTopModule;
 import net.mineacle.core.bootstrap.Module;
+import net.mineacle.core.chat.ChatModule;
 import net.mineacle.core.common.gui.MenuCloseListener;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.economy.EconomyModule;
 import net.mineacle.core.homes.HomesModule;
 import net.mineacle.core.placeholders.PlaceholdersModule;
 import net.mineacle.core.stats.StatsModule;
 import net.mineacle.core.teams.TeamsModule;
 import net.mineacle.core.tpa.TpaModule;
-import org.bukkit.ChatColor;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -61,6 +62,7 @@ public final class Core extends JavaPlugin {
             registerModule(new StatsModule());
             registerModule(new EconomyModule());
             registerModule(new BalTopModule());
+            registerModule(new ChatModule());
             registerModule(new PlaceholdersModule());
 
             getLogger().info("MineacleCore enabled successfully.");
@@ -227,11 +229,11 @@ public final class Core extends JavaPlugin {
 
     public String getMessage(String path) {
         String value = messagesConfig.getString(path, "&cMissing message: " + path);
-        return ChatColor.translateAlternateColorCodes('&', value);
+        return TextColor.color(value);
     }
 
     public String getMessageText(String value) {
-        return ChatColor.translateAlternateColorCodes('&', value == null ? "" : value);
+        return TextColor.color(value);
     }
 
     public List<Module> modules() {
