@@ -5,6 +5,7 @@ import net.mineacle.core.bootstrap.Module;
 import net.mineacle.core.common.gui.MenuCloseListener;
 import net.mineacle.core.economy.EconomyModule;
 import net.mineacle.core.homes.HomesModule;
+import net.mineacle.core.placeholders.PlaceholdersModule;
 import net.mineacle.core.stats.StatsModule;
 import net.mineacle.core.teams.TeamsModule;
 import net.mineacle.core.tpa.TpaModule;
@@ -60,6 +61,7 @@ public final class Core extends JavaPlugin {
             registerModule(new StatsModule());
             registerModule(new EconomyModule());
             registerModule(new BalTopModule());
+            registerModule(new PlaceholdersModule());
 
             getLogger().info("MineacleCore enabled successfully.");
         } catch (Exception exception) {

@@ -16,12 +16,18 @@ import org.bukkit.command.PluginCommand;
 
 public final class TeamsModule extends Module {
 
+    private static TeamService activeTeamService;
+
     private Core core;
     private TeamService teamService;
     private TeamInviteService inviteService;
     private TeamHomeService teamHomeService;
     private TeleportService teleportService;
     private PlayerStatisticsGui playerStatisticsGui;
+
+    public static TeamService teamService() {
+        return activeTeamService;
+    }
 
     @Override
     public String name() {
@@ -33,6 +39,8 @@ public final class TeamsModule extends Module {
         this.core = core;
 
         this.teamService = new TeamService(core);
+        activeTeamService = this.teamService;
+
         this.inviteService = new TeamInviteService(teamService);
         this.teamHomeService = new TeamHomeService(core, teamService);
         this.teleportService = new TeleportService(core);
@@ -82,5 +90,7 @@ public final class TeamsModule extends Module {
         if (core != null) {
             core.saveTeamsFile();
         }
+
+        activeTeamService = null;
     }
 }
