@@ -4,6 +4,8 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.mineacle.core.Core;
 import net.mineacle.core.common.gui.MenuHistory;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.tpa.gui.TpaRequestGui;
 import net.mineacle.core.tpa.service.TpaRequest;
@@ -40,7 +42,7 @@ public final class TpaCommand implements CommandExecutor, TabCompleter {
         }
 
         if (!player.hasPermission("mineacletpa.use")) {
-            player.sendMessage("§cYou do not have permission.");
+            player.sendMessage(TextColor.color("&cYou do not have permission."));
             return true;
         }
 
@@ -58,39 +60,42 @@ public final class TpaCommand implements CommandExecutor, TabCompleter {
     private boolean handleTpa(Player requester, String[] args, TpaRequestType type) {
         if (args.length < 1) {
             requester.sendMessage(type == TpaRequestType.TO_TARGET
-                    ? "§cUsage: /tpa <player>"
-                    : "§cUsage: /tpahere <player>");
+                    ? TextColor.color("&cUsage: /tpa <player>")
+                    : TextColor.color("&cUsage: /tpahere <player>"));
             return true;
         }
 
         Player target = Bukkit.getPlayerExact(args[0]);
 
         if (target == null) {
-            requester.sendMessage("§cThat player is not online.");
+            requester.sendMessage(TextColor.color("&cThat player is not online."));
             return true;
         }
 
         if (target.getUniqueId().equals(requester.getUniqueId())) {
-            requester.sendMessage("§cYou cannot send a teleport request to yourself.");
+            requester.sendMessage(TextColor.color("&cYou cannot send a teleport request to yourself."));
             return true;
         }
 
         if (!tpaService.createRequest(requester, target, type)) {
-            requester.sendMessage("§cCould not send teleport request.");
+            requester.sendMessage(TextColor.color("&cCould not send teleport request."));
             return true;
         }
 
-        requester.sendMessage("§aTeleport request sent to §f" + target.getName() + "§a.");
+        String requesterName = DisplayNames.prefixedDisplayName(requester);
+        String targetName = DisplayNames.prefixedDisplayName(target);
+
+        requester.sendMessage(TextColor.color("&aTeleport request sent to " + targetName + "&a."));
 
         if (type == TpaRequestType.TO_TARGET) {
-            target.sendActionBar(Component.text("§d" + requester.getName() + " §7wants to teleport to you."));
-            target.sendMessage("§d" + requester.getName() + " §7wants to teleport to you.");
+            target.sendActionBar(Component.text(TextColor.color(requesterName + " &#bbbbbbwants to teleport to you.")));
+            target.sendMessage(TextColor.color(requesterName + " &#bbbbbbwants to teleport to you."));
         } else {
-            target.sendActionBar(Component.text("§d" + requester.getName() + " §7wants you to teleport to them."));
-            target.sendMessage("§d" + requester.getName() + " §7wants you to teleport to them.");
+            target.sendActionBar(Component.text(TextColor.color(requesterName + " &#bbbbbbwants you to teleport to them.")));
+            target.sendMessage(TextColor.color(requesterName + " &#bbbbbbwants you to teleport to them."));
         }
 
-        target.sendMessage(Component.text("§7Type §d/tpaccept §7or click to respond.")
+        target.sendMessage(Component.text(TextColor.color("&#bbbbbbType &d/tpaccept &#bbbbbbor click to respond."))
                 .clickEvent(ClickEvent.runCommand("/tpaccept")));
 
         core.getServer().getScheduler().runTaskLater(core, () -> {
@@ -107,11 +112,11 @@ public final class TpaCommand implements CommandExecutor, TabCompleter {
             tpaService.removeRequest(target.getUniqueId());
 
             if (requester.isOnline()) {
-                requester.sendMessage("§cTeleport request to " + target.getName() + " expired.");
+                requester.sendMessage(TextColor.color("&cTeleport request to " + targetName + " expired."));
             }
 
             if (target.isOnline()) {
-                target.sendMessage("§cTeleport request expired.");
+                target.sendMessage(TextColor.color("&cTeleport request expired."));
             }
         }, tpaService.timeoutSeconds() * 20L);
 
@@ -122,7 +127,7 @@ public final class TpaCommand implements CommandExecutor, TabCompleter {
         TpaRequest request = tpaService.getRequest(player.getUniqueId());
 
         if (request == null) {
-            player.sendMessage("§cYou have no pending teleport requests.");
+            player.sendMessage(TextColor.color("&cYou have no pending teleport requests."));
             return true;
         }
 
@@ -134,16 +139,16 @@ public final class TpaCommand implements CommandExecutor, TabCompleter {
         TpaRequest request = tpaService.removeRequest(player.getUniqueId());
 
         if (request == null) {
-            player.sendMessage("§cYou have no pending teleport requests.");
+            player.sendMessage(TextColor.color("&cYou have no pending teleport requests."));
             return true;
         }
 
         Player requester = tpaService.requester(request);
 
-        player.sendMessage("§cTeleport request denied.");
+        player.sendMessage(TextColor.color("&cTeleport request denied."));
 
         if (requester != null && requester.isOnline()) {
-            requester.sendMessage("§c" + player.getName() + " denied your teleport request.");
+            requester.sendMessage(TextColor.color("&c" + DisplayNames.prefixedDisplayName(player) + " denied your teleport request."));
         }
 
         return true;

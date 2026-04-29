@@ -1,9 +1,10 @@
 package net.mineacle.core.teams.listener;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
-import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import net.mineacle.core.Core;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
@@ -35,7 +36,7 @@ public final class TeamChatListener implements Listener {
 
         if (team == null) {
             teamService.setTeamChat(sender.getUniqueId(), false);
-            sender.sendMessage("§cTeam chat disabled because you are not in a team.");
+            sender.sendMessage(TextColor.color("&cTeam chat disabled because you are not in a team."));
             return;
         }
 
@@ -47,7 +48,11 @@ public final class TeamChatListener implements Listener {
     }
 
     public void sendTeamMessage(Player sender, TeamRecord team, String message) {
-        String formatted = "§d[" + team.name() + "] §f" + sender.getName() + "§7: §f" + message;
+        String formatted = TextColor.color(
+                "&d[" + team.name() + "] "
+                        + DisplayNames.prefixedDisplayName(sender)
+                        + "&#bbbbbb: &#bbbbbb" + message
+        );
 
         for (UUID memberId : teamService.getTeamMembers(team.teamId())) {
             Player member = Bukkit.getPlayer(memberId);

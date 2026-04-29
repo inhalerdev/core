@@ -46,7 +46,8 @@ public final class NicknameService {
             return "";
         }
 
-        return player.getName() == null ? player.getUniqueId().toString() : player.getName();
+        String name = player.getName();
+        return name == null || name.isBlank() ? player.getUniqueId().toString() : name;
     }
 
     public String nickname(OfflinePlayer player) {
@@ -61,7 +62,7 @@ public final class NicknameService {
         String nickname = nickname(player);
 
         if (!nickname.isBlank()) {
-            return nickname;
+            return prefix() + nickname;
         }
 
         return username(player);
@@ -87,6 +88,10 @@ public final class NicknameService {
         }
 
         String cleaned = nickname.trim();
+
+        if (cleaned.startsWith(prefix())) {
+            cleaned = cleaned.substring(prefix().length());
+        }
 
         if (cleaned.isBlank()) {
             return false;
@@ -121,11 +126,10 @@ public final class NicknameService {
             return null;
         }
 
-        String cleaned = nickname;
-        String prefix = prefix();
+        String cleaned = nickname.trim();
 
-        if (cleaned.startsWith(prefix)) {
-            cleaned = cleaned.substring(prefix.length());
+        if (cleaned.startsWith(prefix())) {
+            cleaned = cleaned.substring(prefix().length());
         }
 
         String target = cleaned.toLowerCase(Locale.ROOT);
@@ -182,7 +186,15 @@ public final class NicknameService {
                 UUID uuid = UUID.fromString(key);
                 String nickname = config.getString("nicknames." + key, "");
 
-                if (nickname != null && !nickname.isBlank()) {
+                if (nickname == null || nickname.isBlank()) {
+                    continue;
+                }
+
+                if (nickname.startsWith(prefix())) {
+                    nickname = nickname.substring(prefix().length());
+                }
+
+                if (!nickname.isBlank()) {
                     nicknames.put(uuid, nickname);
                 }
             } catch (IllegalArgumentException ignored) {

@@ -1,6 +1,8 @@
 package net.mineacle.core.teams.gui;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.service.TeamInviteService;
@@ -30,9 +32,9 @@ public final class TeamsMainGui {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            player.sendMessage("§cYou are not in a team.");
-            player.sendMessage("§7Type §d/team create <name> §7to create a team.");
-            player.sendMessage("§7Type §d/team join §7to view invites.");
+            player.sendMessage(TextColor.color("&cYou are not in a team."));
+            player.sendMessage(TextColor.color("&#bbbbbbType &d/team create &#bbbbbbto create a team."));
+            player.sendMessage(TextColor.color("&#bbbbbbType &d/team join &#bbbbbbto view invites."));
             return;
         }
 
@@ -45,6 +47,7 @@ public final class TeamsMainGui {
         );
 
         int slot = 0;
+
         for (UUID memberId : teamService.getTeamMembers(team.teamId())) {
             if (slot >= 45) {
                 break;
@@ -53,43 +56,41 @@ public final class TeamsMainGui {
             OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(memberId);
             TeamMemberRecord member = teamService.getMember(memberId);
 
-            String name = offlinePlayer.getName() == null ? memberId.toString() : offlinePlayer.getName();
+            String name = DisplayNames.prefixedDisplayName(offlinePlayer);
             String role = member == null ? "Member" : member.role().displayName();
 
             inventory.setItem(slot, playerHead(
                     offlinePlayer,
-                    "&f" + name,
+                    name,
                     List.of(
-                            "&7Role: &d" + role,
-                            "&7Click to manage"
+                            "&#bbbbbbRole: &d" + role,
+                            "&#bbbbbbClick to manage"
                     )
             ));
 
             slot++;
         }
 
-        if (teamService.isAdmin(player.getUniqueId())
-                && memberCount < teamService.maxMembers()
-                && slot < 45) {
+        if (teamService.isAdmin(player.getUniqueId()) && memberCount < teamService.maxMembers() && slot < 45) {
             inventory.setItem(slot, item(
                     Material.LIME_STAINED_GLASS_PANE,
                     "&aInvite Player",
-                    List.of("&7Click to autofill &d/team invite")
+                    List.of("&#bbbbbbClick to autofill &d/team invite")
             ));
         }
 
         inventory.setItem(47, item(
                 Material.PURPLE_BANNER,
                 "&dTeam Home",
-                List.of("&7Click to teleport to Team Home")
+                List.of("&#bbbbbbClick to teleport to Team Home")
         ));
 
         inventory.setItem(49, item(
                 Material.BOOK,
                 "&dTeam Info",
                 List.of(
-                        "&7Name: &d" + team.name(),
-                        "&7Members: &d" + memberCount + "&7/" + teamService.maxMembers()
+                        "&#bbbbbbName: &d" + team.name(),
+                        "&#bbbbbbMembers: &d" + memberCount + "&#bbbbbb/" + teamService.maxMembers()
                 )
         ));
 
@@ -104,7 +105,7 @@ public final class TeamsMainGui {
         return item(
                 Material.DIAMOND_SWORD,
                 "&dTeam PVP",
-                List.of("&fCurrently: " + (friendlyFire ? "&aON" : "&cOFF"))
+                List.of("&#bbbbbbCurrently: " + (friendlyFire ? "&aON" : "&cOFF"))
         );
     }
 
@@ -119,8 +120,8 @@ public final class TeamsMainGui {
         meta.setOwningPlayer(owner);
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
-        item.setItemMeta(meta);
 
+        item.setItemMeta(meta);
         return item;
     }
 
@@ -135,12 +136,12 @@ public final class TeamsMainGui {
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamsMainGui::color).toList());
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-        item.setItemMeta(meta);
 
+        item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }

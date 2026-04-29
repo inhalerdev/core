@@ -1,6 +1,8 @@
 package net.mineacle.core.tpa.gui;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.tpa.service.TpaRequest;
 import net.mineacle.core.tpa.service.TpaRequestType;
 import org.bukkit.Bukkit;
@@ -24,33 +26,33 @@ public final class TpaRequestGui {
 
     public static void open(Core core, Player viewer, TpaRequest request) {
         if (request == null) {
-            viewer.sendMessage("§cYou have no pending teleport requests.");
+            viewer.sendMessage(TextColor.color("&cYou have no pending teleport requests."));
             return;
         }
 
         OfflinePlayer requester = Bukkit.getOfflinePlayer(request.requesterId());
-        String requesterName = requester.getName() == null ? request.requesterId().toString() : requester.getName();
+        String requesterName = DisplayNames.prefixedDisplayName(requester);
 
         Inventory inventory = Bukkit.createInventory(null, 27, TITLE);
 
         inventory.setItem(11, item(
                 Material.RED_STAINED_GLASS_PANE,
                 "&cDeny",
-                List.of("&7Deny this teleport request.")
+                List.of("&#bbbbbbDeny this teleport request.")
         ));
 
         inventory.setItem(13, playerHead(
                 requester,
-                "&d" + requesterName,
+                requesterName,
                 request.type() == TpaRequestType.TO_TARGET
-                        ? List.of("&7Wants to teleport to you.")
-                        : List.of("&7Wants you to teleport to them.")
+                        ? List.of("&#bbbbbbWants to teleport to you.")
+                        : List.of("&#bbbbbbWants you to teleport to them.")
         ));
 
         inventory.setItem(15, item(
                 Material.LIME_STAINED_GLASS_PANE,
                 "&aAccept",
-                List.of("&7Accept this teleport request.")
+                List.of("&#bbbbbbAccept this teleport request.")
         ));
 
         viewer.openInventory(inventory);
@@ -82,12 +84,12 @@ public final class TpaRequestGui {
 
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TpaRequestGui::color).toList());
-        item.setItemMeta(meta);
 
+        item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }

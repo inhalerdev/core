@@ -104,7 +104,7 @@ public final class EconomyService {
         give(target.getUniqueId(), cents);
 
         String amount = format(cents);
-        String targetName = target.getName() == null ? target.getUniqueId().toString() : target.getName();
+        String targetName = net.mineacle.core.common.player.DisplayNames.prefixedDisplayName(target);
 
         sender.sendMessage(message("economy.pay-sent")
                 .replace("%amount%", amount)
@@ -115,7 +115,7 @@ public final class EconomyService {
         if (onlineTarget != null && onlineTarget.isOnline()) {
             sendOnlinePaidMessage(onlineTarget, cents);
         } else {
-            addOfflinePayment(target.getUniqueId(), cents, sender.getName());
+            addOfflinePayment(target.getUniqueId(), cents, net.mineacle.core.common.player.DisplayNames.prefixedDisplayName(sender));
         }
 
         save();

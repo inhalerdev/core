@@ -1,6 +1,7 @@
 package net.mineacle.core.economy.command;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.common.player.DisplayNames;
 import net.mineacle.core.economy.service.EconomyService;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -52,7 +53,7 @@ public final class BalanceCommand implements CommandExecutor, TabCompleter {
         String balance = economyService.format(economyService.getBalanceCents(target.getUniqueId()));
 
         sender.sendMessage(core.getMessage("economy.balance-other")
-                .replace("%player%", target.getName() == null ? target.getUniqueId().toString() : target.getName())
+                .replace("%player%", DisplayNames.prefixedDisplayName(target))
                 .replace("%balance%", balance));
 
         return true;

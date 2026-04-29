@@ -1,6 +1,8 @@
 package net.mineacle.core.baltop.gui;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.economy.service.EconomyService;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -57,7 +59,7 @@ public final class BalTopGui {
             int placement = index + 1;
 
             OfflinePlayer target = Bukkit.getOfflinePlayer(entry.getKey());
-            String name = target.getName() == null ? entry.getKey().toString() : target.getName();
+            String name = DisplayNames.prefixedDisplayName(target);
             String balance = economyService.format(entry.getValue());
 
             inventory.setItem(slot, playerEntry(target, name, balance, placement));
@@ -67,21 +69,21 @@ public final class BalTopGui {
             inventory.setItem(SLOT_PREVIOUS, item(
                     Material.ARROW,
                     "&dPrevious Page",
-                    List.of("&7Click to go to the previous page.")
+                    List.of("&#bbbbbbClick to go to the previous page.")
             ));
         }
 
         inventory.setItem(SLOT_REFRESH, item(
                 Material.EMERALD,
                 "&dRefresh",
-                List.of("&7Click to refresh Balance Top.")
+                List.of("&#bbbbbbClick to refresh Balance Top.")
         ));
 
         if (safePage < totalPages - 1) {
             inventory.setItem(SLOT_NEXT, item(
                     Material.ARROW,
                     "&dNext Page",
-                    List.of("&7Click to go to the next page.")
+                    List.of("&#bbbbbbClick to go to the next page.")
             ));
         }
 
@@ -129,9 +131,9 @@ public final class BalTopGui {
         }
 
         meta.setOwningPlayer(owner);
-        meta.setDisplayName(color("&d" + name));
+        meta.setDisplayName(color(name));
         meta.setLore(List.of(
-                color("&fBalance: &7" + balance + " &d(#" + placement + ")")
+                color("&#bbbbbbBalance: &7" + balance + " &d(#" + placement + ")")
         ));
         meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 
@@ -162,6 +164,6 @@ public final class BalTopGui {
     }
 
     private static String color(String input) {
-        return org.bukkit.ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }
