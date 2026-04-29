@@ -31,7 +31,7 @@ public final class DisplayNames {
     }
 
     public static String prefixedDisplayName(OfflinePlayer player) {
-        return luckPermsPrefix(player) + displayName(player);
+        return luckPermsPrefix(player) + "&d" + displayName(player);
     }
 
     public static String luckPermsPrefix(OfflinePlayer player) {

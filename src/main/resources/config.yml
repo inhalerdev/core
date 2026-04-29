@@ -73,7 +73,7 @@ nickname:
 
 chat:
   enabled: true
-  format: "%mineacle_chat_displayname%&#bbbbbb: &#bbbbbb%message%"
+  format: "%luckperms_prefix%%mineacle_chat_displayname%&#bbbbbb: &#bbbbbb%message%"
 
   worlds:
     mode: global

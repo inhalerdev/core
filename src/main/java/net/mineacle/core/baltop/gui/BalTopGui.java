@@ -59,7 +59,7 @@ public final class BalTopGui {
             int placement = index + 1;
 
             OfflinePlayer target = Bukkit.getOfflinePlayer(entry.getKey());
-            String name = DisplayNames.prefixedDisplayName(target);
+            String name = DisplayNames.luckPermsPrefix(target) + "&d" + DisplayNames.displayName(target);
             String balance = economyService.format(entry.getValue());
 
             inventory.setItem(slot, playerEntry(target, name, balance, placement));
