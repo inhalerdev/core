@@ -343,13 +343,13 @@ public final class MineaclePlaceholderExpansion extends PlaceholderExpansion {
 
     private String time() {
         return now().format(DateTimeFormatter.ofPattern(
-                core.getConfig().getString("placeholders.datetime.time-format", "hh:mm a")
+                core.getConfig().getString("placeholders.datetime.time-format", "hh:mm")
         ));
     }
 
     private String dateTime() {
         return now().format(DateTimeFormatter.ofPattern(
-                core.getConfig().getString("placeholders.datetime.datetime-format", "MM/dd/yy | hh:mm a")
+                core.getConfig().getString("placeholders.datetime.datetime-format", "MM/dd/yy | hh:mm")
         ));
     }
 
