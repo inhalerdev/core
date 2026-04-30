@@ -1,7 +1,7 @@
 package net.mineacle.core.stats.command;
 
+import net.mineacle.core.common.player.DisplayNames;
 import net.mineacle.core.stats.PlayerStatisticsGui;
-import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -11,7 +11,6 @@ import org.bukkit.entity.Player;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public final class StatsCommand implements CommandExecutor, TabCompleter {
 
@@ -38,9 +37,9 @@ public final class StatsCommand implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        OfflinePlayer target = Bukkit.getOfflinePlayer(args[0]);
+        OfflinePlayer target = DisplayNames.resolveOffline(args[0]);
 
-        if (target.getName() == null && !target.hasPlayedBefore()) {
+        if (target == null || (target.getName() == null && !target.hasPlayedBefore())) {
             viewer.sendMessage("§cThat player could not be found.");
             return true;
         }
@@ -61,11 +60,11 @@ public final class StatsCommand implements CommandExecutor, TabCompleter {
             return completions;
         }
 
-        String partial = args[0].toLowerCase(Locale.ROOT);
+        String partial = args[0];
 
-        for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.getName().toLowerCase(Locale.ROOT).startsWith(partial)) {
-                completions.add(online.getName());
+        for (Player online : org.bukkit.Bukkit.getOnlinePlayers()) {
+            if (DisplayNames.startsWithDisplay(online, partial)) {
+                completions.add(DisplayNames.commandDisplayName(online));
             }
         }
 

@@ -1,6 +1,8 @@
 package net.mineacle.core.stats;
 
 import me.clip.placeholderapi.PlaceholderAPI;
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -34,50 +36,54 @@ public final class PlayerStatisticsGui implements Listener {
 
     public void open(Player viewer, UUID targetId) {
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
-        String displayName = placeholder(target, "%mineacle_displayname%", fallbackName(target));
 
-        Inventory inventory = Bukkit.createInventory(null, SIZE, displayName + " Stats");
+        // No LuckPerms prefix and no OP color in GUI title.
+        Inventory inventory = Bukkit.createInventory(
+                null,
+                SIZE,
+                DisplayNames.displayName(target) + " Stats"
+        );
 
         inventory.setItem(SLOT_MONEY, statItem(
                 Material.EMERALD,
                 "&dMoney",
-                "&7" + placeholder(target, "%mineacle_balance%", "$0")
+                "&#bbbbbb" + placeholder(target, "%mineacle_balance%", "$0")
         ));
 
         inventory.setItem(SLOT_PLAYER_KILLS, statItem(
                 Material.DIAMOND_SWORD,
                 "&dKills",
-                "&7" + placeholder(target, "%mineacle_stats_kills%", fallbackStatistic(targetId, Statistic.PLAYER_KILLS))
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_kills%", fallbackStatistic(targetId, Statistic.PLAYER_KILLS))
         ));
 
         inventory.setItem(SLOT_DEATHS, statItem(
                 Material.SKELETON_SKULL,
                 "&dDeaths",
-                "&7" + placeholder(target, "%mineacle_stats_deaths%", fallbackStatistic(targetId, Statistic.DEATHS))
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_deaths%", fallbackStatistic(targetId, Statistic.DEATHS))
         ));
 
         inventory.setItem(SLOT_PLAYTIME, statItem(
                 Material.CLOCK,
                 "&dPlaytime",
-                "&7" + placeholder(target, "%mineacle_stats_playtime%", fallbackPlaytime(targetId))
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_playtime%", fallbackPlaytime(targetId))
         ));
 
         inventory.setItem(SLOT_BLOCKS_PLACED, statItem(
                 Material.GRASS_BLOCK,
                 "&dBlocks Placed",
-                "&7" + placeholder(target, "%mineacle_stats_blocks_placed%", "0")
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_blocks_placed%", "0")
         ));
 
         inventory.setItem(SLOT_BLOCKS_BROKEN, statItem(
                 Material.COBBLESTONE,
                 "&dBlocks Broken",
-                "&7" + placeholder(target, "%mineacle_stats_blocks_broken%", "0")
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_blocks_broken%", "0")
         ));
 
         inventory.setItem(SLOT_MOBS_KILLED, statItem(
                 Material.ZOMBIE_HEAD,
                 "&dMobs Killed",
-                "&7" + placeholder(target, "%mineacle_stats_mobs_killed%", fallbackStatistic(targetId, Statistic.MOB_KILLS))
+                "&#bbbbbb" + placeholder(target, "%mineacle_stats_mobs_killed%", fallbackStatistic(targetId, Statistic.MOB_KILLS))
         ));
 
         viewer.openInventory(inventory);
@@ -147,15 +153,6 @@ public final class PlayerStatisticsGui implements Listener {
         }
     }
 
-    private String fallbackName(OfflinePlayer target) {
-        if (target == null) {
-            return "Unknown";
-        }
-
-        String name = target.getName();
-        return name == null || name.isBlank() ? target.getUniqueId().toString() : name;
-    }
-
     private String fallbackStatistic(UUID targetId, Statistic statistic) {
         Player player = Bukkit.getPlayer(targetId);
 
@@ -196,6 +193,6 @@ public final class PlayerStatisticsGui implements Listener {
     }
 
     private String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }
