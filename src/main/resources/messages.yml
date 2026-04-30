@@ -45,7 +45,11 @@ teams:
   left-team: "&cYou left your team."
   disbanded: "&cTeam disbanded."
   no-color-codes-in-name: "&cYou cannot create or rename a team with custom color codes."
-  manage-colors-instead: "&7Type &d/team manage &7to choose your team's banner and name color."
+  manage-colors-instead: "&#bbbbbbType &d/team manage &#bbbbbbto choose your team's banner and name color."
+
+  death:
+    died: "&d%player% &#bbbbbbdied."
+    killed: "&d%player% &#bbbbbbwas killed by &d%killer%&#bbbbbb."
 
   invite:
     no-permission: "&cYou do not have permission to invite players."
@@ -71,9 +75,9 @@ teams:
     no-delete-permission: "&cYou do not have permission to delete the team home."
 
   pvp:
-    no-permission: "&cYou do not have permission to toggle friendly fire."
-    enabled: "&cFriendly fire enabled."
-    disabled: "&aFriendly fire disabled."
+    no-permission: "&cYou do not have permission to toggle Team PvP."
+    enabled: "&aTeam PvP enabled."
+    disabled: "&cTeam PvP disabled."
 
   chat:
     enabled: "&aTeam chat enabled."

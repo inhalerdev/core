@@ -15,6 +15,9 @@ import org.bukkit.Statistic;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -130,6 +133,18 @@ public final class MineaclePlaceholderExpansion extends PlaceholderExpansion {
 
             case "stats_mobs_killed", "mobs_killed" ->
                     String.valueOf(statistic(uuid, Statistic.MOB_KILLS));
+
+            case "date" ->
+                    date();
+
+            case "time" ->
+                    time();
+
+            case "datetime", "date_time" ->
+                    dateTime();
+
+            case "timezone", "time_zone" ->
+                    timeZone();
 
             default -> null;
         };
@@ -318,5 +333,41 @@ public final class MineaclePlaceholderExpansion extends PlaceholderExpansion {
         }
 
         return total;
+    }
+
+    private String date() {
+        return now().format(DateTimeFormatter.ofPattern(
+                core.getConfig().getString("placeholders.datetime.date-format", "MM/dd/yy")
+        ));
+    }
+
+    private String time() {
+        return now().format(DateTimeFormatter.ofPattern(
+                core.getConfig().getString("placeholders.datetime.time-format", "hh:mm a")
+        ));
+    }
+
+    private String dateTime() {
+        return now().format(DateTimeFormatter.ofPattern(
+                core.getConfig().getString("placeholders.datetime.datetime-format", "MM/dd/yy | hh:mm a")
+        ));
+    }
+
+    private String timeZone() {
+        return zoneId().getId();
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(zoneId());
+    }
+
+    private ZoneId zoneId() {
+        String raw = core.getConfig().getString("placeholders.datetime.timezone", "America/Chicago");
+
+        try {
+            return ZoneId.of(raw);
+        } catch (Exception ignored) {
+            return ZoneId.systemDefault();
+        }
     }
 }
