@@ -88,7 +88,7 @@ chat:
     datetime:
       timezone: "America/Chicago"
       date-format: "MM/dd/yy"
-      time-format: "hh:mm a"
+      time-format: "hh:mm"
       #time-format: "hh:mm a"
-      datetime-format: "MM/dd/yy | hh:mm a"
+      datetime-format: "MM/dd/yy | hh:mm"
       #datetime-format: "MM/dd/yy | hh:mm a"
