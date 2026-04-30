@@ -1,5 +1,7 @@
 package net.mineacle.core.teams.gui;
 
+import net.mineacle.core.common.player.DisplayNames;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
@@ -27,17 +29,21 @@ public final class TeamMemberGui {
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
         TeamMemberRecord member = teamService.getMember(targetId);
 
-        String name = target.getName() == null ? targetId.toString() : target.getName();
+        String displayName = DisplayNames.prefixedDisplayName(target);
         String role = member == null ? "Unknown" : member.role().displayName();
 
-        Inventory inventory = Bukkit.createInventory(null, 27, ChatColor.DARK_GRAY + TITLE_PREFIX + name);
+        Inventory inventory = Bukkit.createInventory(
+                null,
+                27,
+                ChatColor.DARK_GRAY + TITLE_PREFIX + TextColor.strip(displayName)
+        );
 
         inventory.setItem(4, playerHead(
                 target,
-                "&d" + name,
+                displayName,
                 List.of(
-                        "&7Rank: &d" + role,
-                        "&7Manage this team member."
+                        "&#bbbbbbRank: &d" + role,
+                        "&#bbbbbbManage this team member."
                 )
         ));
 
@@ -45,8 +51,8 @@ public final class TeamMemberGui {
                 Material.LIME_DYE,
                 "&aPromote",
                 List.of(
-                        "&7Promote this member.",
-                        "&8Founder only."
+                        "&#bbbbbbPromote this member.",
+                        "&#bbbbbbFounder only."
                 )
         ));
 
@@ -54,8 +60,8 @@ public final class TeamMemberGui {
                 Material.ORANGE_DYE,
                 "&6Demote",
                 List.of(
-                        "&7Demote this member.",
-                        "&8Founder only."
+                        "&#bbbbbbDemote this member.",
+                        "&#bbbbbbFounder only."
                 )
         ));
 
@@ -63,7 +69,7 @@ public final class TeamMemberGui {
                 Material.BOOK,
                 "&dView Stats",
                 List.of(
-                        "&7Open this player's stats."
+                        "&#bbbbbbOpen this player's stats."
                 )
         ));
 
@@ -71,8 +77,8 @@ public final class TeamMemberGui {
                 Material.BARRIER,
                 "&cKick",
                 List.of(
-                        "&7Remove this player from the team.",
-                        "&8Admins can kick members."
+                        "&#bbbbbbRemove this player from the team.",
+                        "&#bbbbbbAdmins can kick members."
                 )
         ));
 
@@ -80,8 +86,8 @@ public final class TeamMemberGui {
                 Material.REDSTONE_BLOCK,
                 "&4Ban",
                 List.of(
-                        "&7Kick and block this player",
-                        "&7from joining for &d7 days&7."
+                        "&#bbbbbbKick and block this player",
+                        "&#bbbbbbfrom joining for &d7 days&#bbbbbb."
                 )
         ));
 
@@ -121,6 +127,6 @@ public final class TeamMemberGui {
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }
