@@ -98,6 +98,8 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private boolean isTeamMainMenu(String title) {
+        TeamRecord viewerTeam = null;
+
         for (Player online : core.getServer().getOnlinePlayers()) {
             TeamRecord possibleTeam = teamService.getTeamByPlayer(online.getUniqueId());
 
@@ -113,11 +115,12 @@ public final class TeamsGuiListener implements Listener {
                     + ")";
 
             if (title.equals(expectedTitle)) {
-                return true;
+                viewerTeam = possibleTeam;
+                break;
             }
         }
 
-        return title.endsWith(TeamsMainGui.TITLE_SUFFIX);
+        return viewerTeam != null;
     }
 
     private void handleMainClick(Player player, int slot) {
@@ -180,7 +183,10 @@ public final class TeamsGuiListener implements Listener {
             boolean newValue = !team.friendlyFire();
             teamService.setFriendlyFire(team.teamId(), newValue);
 
-            player.sendMessage(newValue ? "§aTeam PVP enabled." : "§cTeam PVP disabled.");
+            String message = newValue ? "§aTeam PvP enabled." : "§cTeam PvP disabled.";
+            player.sendMessage(message);
+            player.sendActionBar(Component.text(message));
+
             TeamsMainGui.open(core, player, teamService, inviteService);
         }
     }
@@ -273,7 +279,7 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot != 15) {
+        if (slot != 13 && slot != 15) {
             return;
         }
 

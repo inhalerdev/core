@@ -1,6 +1,7 @@
 package net.mineacle.core.teams.gui;
 
 import net.mineacle.core.Core;
+import net.mineacle.core.common.text.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
@@ -25,19 +26,22 @@ public final class TeamConfirmGui {
         inventory.setItem(11, item(
                 Material.RED_STAINED_GLASS_PANE,
                 "&cCancel",
-                List.of("&7Do not continue")
+                List.of("&#ccccccDo not continue")
         ));
 
         inventory.setItem(13, item(
                 confirmActionMaterial(core),
-                "&f" + actionName,
-                List.of("&7Confirm this action")
+                "&d" + actionName,
+                List.of(
+                        "&#ccccccClick once to arm this action.",
+                        "&#ccccccClick confirm again to continue."
+                )
         ));
 
         inventory.setItem(15, item(
                 Material.LIME_STAINED_GLASS_PANE,
                 "&aConfirm",
-                List.of("&7Click to confirm")
+                List.of("&#ccccccDouble-click confirm to continue")
         ));
 
         player.openInventory(inventory);
@@ -68,12 +72,12 @@ public final class TeamConfirmGui {
 
         meta.setDisplayName(color(name));
         meta.setLore(lore.stream().map(TeamConfirmGui::color).toList());
-        item.setItemMeta(meta);
 
+        item.setItemMeta(meta);
         return item;
     }
 
     private static String color(String input) {
-        return ChatColor.translateAlternateColorCodes('&', input == null ? "" : input);
+        return TextColor.color(input);
     }
 }

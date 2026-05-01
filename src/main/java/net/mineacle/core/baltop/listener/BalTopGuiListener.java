@@ -62,7 +62,7 @@ public final class BalTopGuiListener implements Listener {
         int page = BalTopGui.currentPage(player);
 
         if (rawSlot == BalTopGui.previousSlot()) {
-            MenuHistory.openWithoutBackTrigger(
+            MenuHistory.openRoot(
                     core,
                     player,
                     () -> BalTopGui.open(core, player, economyService, page - 1)
@@ -71,7 +71,7 @@ public final class BalTopGuiListener implements Listener {
         }
 
         if (rawSlot == BalTopGui.refreshSlot()) {
-            MenuHistory.openWithoutBackTrigger(
+            MenuHistory.openRoot(
                     core,
                     player,
                     () -> BalTopGui.open(core, player, economyService, page)
@@ -80,7 +80,7 @@ public final class BalTopGuiListener implements Listener {
         }
 
         if (rawSlot == BalTopGui.nextSlot()) {
-            MenuHistory.openWithoutBackTrigger(
+            MenuHistory.openRoot(
                     core,
                     player,
                     () -> BalTopGui.open(core, player, economyService, page + 1)
@@ -102,10 +102,9 @@ public final class BalTopGuiListener implements Listener {
             return;
         }
 
-        MenuHistory.openChild(
+        MenuHistory.openRoot(
                 core,
                 player,
-                () -> BalTopGui.open(core, player, economyService, page),
                 () -> playerStatisticsGui.open(player, targetId)
         );
     }
