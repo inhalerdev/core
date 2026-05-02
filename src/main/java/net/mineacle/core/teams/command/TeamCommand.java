@@ -2,6 +2,7 @@ package net.mineacle.core.teams.command;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
 import net.mineacle.core.common.gui.MenuHistory;
 import net.mineacle.core.common.player.DisplayNames;
@@ -71,6 +72,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             } else {
                 sendNoTeamPrompt(player);
             }
+
             return true;
         }
 
@@ -184,8 +186,9 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private boolean join(Player player) {
         if (!inviteService.hasInvite(player.getUniqueId())) {
-            String message = TextColor.color("&cYou have no current team invites.");
-            player.sendActionBar(Component.text(message));
+            String message = "§cYou have no current team invites.";
+
+            player.sendActionBar(actionBar(message));
             player.sendMessage(message);
             return true;
         }
@@ -272,8 +275,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         player.sendMessage(TextColor.color("&aInvite sent to " + targetName + "&a."));
 
-        target.sendActionBar(Component.text(TextColor.color("&dTeam invite from " + senderName)));
-        target.sendMessage(TextColor.color("&#bbbbbbYou were invited to join &d" + team.name() + "&#bbbbbb."));
+        target.sendActionBar(actionBar("&dTeam invite from " + senderName));
+        target.sendMessage(TextColor.color("§7You were invited to join &d" + team.name() + "§7."));
         target.sendMessage(Component.text(TextColor.color("&a[View Invite]"))
                 .clickEvent(ClickEvent.runCommand("/team join")));
 
@@ -288,12 +291,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
         boolean enabled = teamService.toggleTeamChat(player.getUniqueId());
 
-        String message = enabled
-                ? TextColor.color("&#bbbbbbTeam chat enabled")
-                : TextColor.color("&#bbbbbbTeam chat disabled");
+        String message = enabled ? "§7Team chat enabled" : "§7Team chat disabled";
 
         player.sendMessage(message);
-        player.sendActionBar(Component.text(message));
+        player.sendActionBar(actionBar(message));
         return true;
     }
 
@@ -428,20 +429,18 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         boolean enabled = !team.friendlyFire();
         teamService.setFriendlyFire(team.teamId(), enabled);
 
-        String message = enabled
-                ? TextColor.color("&aTeam PvP enabled.")
-                : TextColor.color("&cTeam PvP disabled.");
+        String message = enabled ? "§aTeam PvP enabled." : "§cTeam PvP disabled.";
 
         player.sendMessage(message);
-        player.sendActionBar(Component.text(message));
+        player.sendActionBar(actionBar(message));
         return true;
     }
 
     private void sendNoTeamPrompt(Player player) {
         player.sendMessage(TextColor.color("&cYou are not in a team."));
-        player.sendMessage(Component.text(TextColor.color("&#bbbbbbType &d/team create <name> &#bbbbbbto create a team."))
+        player.sendMessage(Component.text(TextColor.color("§7Type &d/team create <name> §7to create a team."))
                 .clickEvent(ClickEvent.suggestCommand("/team create ")));
-        player.sendMessage(Component.text(TextColor.color("&#bbbbbbType &d/team join &#bbbbbbto view invites."))
+        player.sendMessage(Component.text(TextColor.color("§7Type &d/team join §7to view invites."))
                 .clickEvent(ClickEvent.runCommand("/team join")));
     }
 
@@ -508,5 +507,9 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         return completions;
+    }
+
+    private Component actionBar(String message) {
+        return LegacyComponentSerializer.legacySection().deserialize(TextColor.color(message));
     }
 }

@@ -1,7 +1,9 @@
 package net.mineacle.core.teams.listener;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -32,8 +34,13 @@ public final class TeamJoinListener implements Listener {
             }
 
             String message = "§7Team chat enabled";
+
             player.sendMessage(message);
-            player.sendActionBar(Component.text(message));
+            player.sendActionBar(actionBar(message));
         }, 20L);
+    }
+
+    private Component actionBar(String message) {
+        return LegacyComponentSerializer.legacySection().deserialize(TextColor.color(message));
     }
 }

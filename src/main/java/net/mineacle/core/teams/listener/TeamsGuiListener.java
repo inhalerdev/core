@@ -2,8 +2,10 @@ package net.mineacle.core.teams.listener;
 
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
 import net.mineacle.core.common.gui.MenuHistory;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
@@ -69,6 +71,7 @@ public final class TeamsGuiListener implements Listener {
         }
 
         String title = ChatColor.stripColor(event.getView().getTitle());
+
         if (title == null) {
             return;
         }
@@ -184,8 +187,9 @@ public final class TeamsGuiListener implements Listener {
             teamService.setFriendlyFire(team.teamId(), newValue);
 
             String message = newValue ? "§aTeam PvP enabled." : "§cTeam PvP disabled.";
+
             player.sendMessage(message);
-            player.sendActionBar(Component.text(message));
+            player.sendActionBar(actionBar(message));
 
             TeamsMainGui.open(core, player, teamService, inviteService);
         }
@@ -200,6 +204,7 @@ public final class TeamsGuiListener implements Listener {
                 player.closeInventory();
                 player.sendMessage("§cCould not accept invite.");
             }
+
             return;
         }
 
@@ -375,7 +380,8 @@ public final class TeamsGuiListener implements Listener {
         player.setMetadata(META_CONFIRM, new FixedMetadataValue(core, action));
 
         String message = "§7Click confirm again to continue.";
-        player.sendActionBar(Component.text(message));
+
+        player.sendActionBar(actionBar(message));
         player.sendMessage(message);
 
         core.getServer().getScheduler().runTaskLater(core, () -> {
@@ -388,13 +394,17 @@ public final class TeamsGuiListener implements Listener {
             }
 
             String current = player.getMetadata(META_CONFIRM).get(0).asString();
+
             if (!current.equals(action)) {
                 return;
             }
 
             player.removeMetadata(META_CONFIRM, core);
-            player.sendActionBar(Component.text("§cAction timed out."));
-            player.sendMessage("§cAction timed out.");
+
+            String timeoutMessage = "§cAction timed out.";
+
+            player.sendActionBar(actionBar(timeoutMessage));
+            player.sendMessage(timeoutMessage);
         }, 20L * 5L);
     }
 
@@ -402,5 +412,9 @@ public final class TeamsGuiListener implements Listener {
         player.removeMetadata(META_ACTION, core);
         player.removeMetadata(META_TARGET, core);
         player.removeMetadata(META_CONFIRM, core);
+    }
+
+    private Component actionBar(String message) {
+        return LegacyComponentSerializer.legacySection().deserialize(TextColor.color(message));
     }
 }

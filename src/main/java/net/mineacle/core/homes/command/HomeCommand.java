@@ -1,13 +1,14 @@
 package net.mineacle.core.homes.command;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
+import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.homes.gui.ConfirmDeleteHomeGui;
 import net.mineacle.core.homes.gui.HomesMainGui;
 import net.mineacle.core.homes.service.HomeService;
 import net.mineacle.core.homes.service.HomeWorldRules;
 import net.mineacle.core.homes.service.TeleportService;
-import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -77,6 +78,7 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
         }
 
         String requestedName = String.join(" ", args).trim();
+
         if (!homeService.isValidName(requestedName)) {
             player.sendMessage(core.getMessage("homes.invalid-name"));
             return true;
@@ -84,7 +86,7 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
 
         if (worldRules.isBlockedWorld(player.getLocation())) {
             String message = core.getMessage("homes.blocked-world");
-            player.sendActionBar(Component.text(message));
+            player.sendActionBar(actionBar(message));
             player.sendMessage(message);
             return true;
         }
@@ -99,10 +101,12 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
             targetId = existingId;
         } else {
             Integer emptySlot = homeService.findFirstEmptySlot(player);
+
             if (emptySlot == null) {
                 player.sendMessage(core.getMessage("homes.no-empty-slot"));
                 return true;
             }
+
             targetId = emptySlot;
         }
 
@@ -110,7 +114,8 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
 
         String message = core.getMessage("homes.set")
                 .replace("%home%", homeService.getDisplayName(uuid, targetId));
-        player.sendActionBar(Component.text(message));
+
+        player.sendActionBar(actionBar(message));
         player.sendMessage(message);
         return true;
     }
@@ -132,6 +137,7 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
 
         player.setMetadata(META_HOME_PENDING, new FixedMetadataValue(core, id));
         player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, 0));
+
         ConfirmDeleteHomeGui.openPlayerDelete(core, player, id, homeService.getDisplayName(player.getUniqueId(), id));
         return true;
     }
@@ -154,12 +160,14 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
         int maxHomes = homeService.getMaxHomes(player);
 
         Integer id = homeService.findHomeIdByName(uuid, maxHomes, oldName);
+
         if (id == null) {
             player.sendMessage(core.getMessage("homes.not-set").replace("%home%", oldName));
             return true;
         }
 
         Integer duplicate = homeService.findByName(uuid, maxHomes, newName);
+
         if (duplicate != null && duplicate != id) {
             player.sendMessage(core.getMessage("homes.already-exists").replace("%home%", newName));
             return true;
@@ -172,7 +180,7 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
                 .replace("%old_home%", oldDisplayName)
                 .replace("%new_home%", homeService.getDisplayName(uuid, id));
 
-        player.sendActionBar(Component.text(message));
+        player.sendActionBar(actionBar(message));
         player.sendMessage(message);
         return true;
     }
@@ -206,6 +214,7 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
             if (args.length == 1 && "reload".startsWith(args[0].toLowerCase(Locale.ROOT))) {
                 completions.add("reload");
             }
+
             return completions;
         }
 
@@ -216,27 +225,35 @@ public final class HomeCommand implements CommandExecutor, TabCompleter {
         if (commandName.equals("delhome")) {
             if (args.length >= 1) {
                 String partial = String.join(" ", args).toLowerCase(Locale.ROOT);
+
                 for (String name : homeService.getSavedHomeNames(player)) {
                     if (name.toLowerCase(Locale.ROOT).startsWith(partial)) {
                         completions.add(name);
                     }
                 }
             }
+
             return completions;
         }
 
         if (commandName.equals("renamehome")) {
             if (args.length == 1) {
                 String partial = args[0].toLowerCase(Locale.ROOT);
+
                 for (String name : homeService.getSavedHomeNames(player)) {
                     if (name.toLowerCase(Locale.ROOT).startsWith(partial)) {
                         completions.add(name);
                     }
                 }
             }
+
             return completions;
         }
 
         return completions;
+    }
+
+    private Component actionBar(String message) {
+        return LegacyComponentSerializer.legacySection().deserialize(TextColor.color(message));
     }
 }

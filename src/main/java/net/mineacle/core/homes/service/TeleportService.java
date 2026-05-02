@@ -1,7 +1,9 @@
 package net.mineacle.core.homes.service;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
+import net.mineacle.core.common.text.TextColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitRunnable;
@@ -79,7 +81,7 @@ public final class TeleportService {
                         .replace("%target%", targetName == null ? "destination" : targetName)
                         .replace("%seconds%", String.valueOf(countdown));
 
-                player.sendActionBar(Component.text(message));
+                player.sendActionBar(actionBar(message));
                 countdown--;
             }
         }.runTaskTimer(core, 0L, 20L);
@@ -91,11 +93,13 @@ public final class TeleportService {
         }
 
         UUID uuid = player.getUniqueId();
+
         if (!teleporting.contains(uuid)) {
             return;
         }
 
         Location origin = teleportOrigins.get(uuid);
+
         if (origin == null || to == null) {
             return;
         }
@@ -105,7 +109,8 @@ public final class TeleportService {
             teleportOrigins.remove(uuid);
 
             String message = core.getMessage("homes.teleport-cancelled-move");
-            player.sendActionBar(Component.text(message));
+
+            player.sendActionBar(actionBar(message));
             player.sendMessage(message);
         }
     }
@@ -134,5 +139,9 @@ public final class TeleportService {
         return a.getBlockX() == b.getBlockX()
                 && a.getBlockY() == b.getBlockY()
                 && a.getBlockZ() == b.getBlockZ();
+    }
+
+    private Component actionBar(String message) {
+        return LegacyComponentSerializer.legacySection().deserialize(TextColor.color(message));
     }
 }
