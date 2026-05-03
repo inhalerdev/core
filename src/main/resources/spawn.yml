@@ -60,6 +60,11 @@ void:
   fall-protection-seconds: 5
   check-worlds: []
 
+login-reroute:
+  enabled: true
+  delay-ticks: 5
+  send-message: false
+
 messages:
   already-here: "&7You are already at &d%spawn%"
   teleport-start: "&7Teleporting to &d%spawn% &7in &d%seconds%s"

@@ -46,7 +46,7 @@ public final class SpawnJoinQuitListener implements Listener {
 
         if (point == null) {
             if (spawnService.loginRerouteSendMessage()) {
-                sendBoth(player, spawnService.message("login-reroute-missing"));
+                sendActionBar(player, spawnService.message("login-reroute-missing"));
             }
 
             return;
@@ -58,22 +58,17 @@ public final class SpawnJoinQuitListener implements Listener {
                         .replace("%world%", point.worldName())
                         .replace("%spawn%", TextColor.color(point.displayName()));
 
-                sendBoth(player, message);
+                sendActionBar(player, message);
             }
 
             return;
         }
 
-        if (spawnService.loginRerouteSendMessage()) {
-            String message = spawnService.message("login-rerouted")
-                    .replace("%spawn%", TextColor.color(point.displayName()));
-
-            sendBoth(player, message);
-        }
+        // Successful login reroute is intentionally silent.
+        // Players should not be told which spawn world they were routed to.
     }
 
-    private void sendBoth(Player player, String message) {
-        player.sendMessage(TextColor.color(message));
+    private void sendActionBar(Player player, String message) {
         player.sendActionBar(actionBar(message));
     }
 
