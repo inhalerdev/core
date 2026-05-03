@@ -73,12 +73,12 @@ commands:
 
   msg:
     description: Send a private message
-    aliases: [ tell, w, whisper, m ]
+    aliases: [tell, w, whisper, m]
     permission: mineaclechat.message
 
   r:
     description: Reply to your last private message
-    aliases: [ reply ]
+    aliases: [reply]
     permission: mineaclechat.message
 
   ignore:
@@ -96,6 +96,16 @@ commands:
   realname:
     description: Check a player's real name from nickname
     permission: mineaclechat.realname
+
+  spawn:
+    description: Open the spawn menu
+    usage: /spawn
+    permission: mineaclespawn.use
+
+  lobby:
+    description: Open the spawn menu
+    usage: /lobby
+    permission: mineaclespawn.use
 
 permissions:
   mineaclehomes.use:
@@ -153,4 +163,10 @@ permissions:
     default: true
 
   mineaclechat.admin:
+    default: op
+
+  mineaclespawn.use:
+    default: true
+
+  mineaclespawn.admin:
     default: op

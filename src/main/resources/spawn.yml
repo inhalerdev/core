@@ -1,0 +1,59 @@
+enabled: true
+title: "Spawn"
+size: 27
+max-players-display: 100
+
+worlds:
+  lobby1:
+    enabled: true
+    slot: 11
+    display-name: "&dSpawn 1"
+    world: "lobby1"
+    x: 0.5
+    y: 76.0
+    z: -0.5
+    yaw: -180.0
+    pitch: 0.0
+
+  lobby2:
+    enabled: true
+    slot: 12
+    display-name: "&dSpawn 2"
+    world: "lobby2"
+    x: 0.5
+    y: 76.0
+    z: -0.5
+    yaw: -180.0
+    pitch: 0.0
+
+  lobby3:
+    enabled: true
+    slot: 13
+    display-name: "&dSpawn 3"
+    world: "lobby3"
+    x: 0.5
+    y: 76.0
+    z: -0.5
+    yaw: -180.0
+    pitch: 0.0
+
+random:
+  enabled: true
+  slot: 15
+  display-name: "&#7d00ffRandom Spawn"
+  mode: "LOWEST_POPULATION"
+
+void:
+  enabled: true
+  trigger-y: 0
+  target: "random"
+  fall-protection-seconds: 5
+  check-worlds: []
+
+messages:
+  already-here: "&7You are already at &d%spawn%"
+  teleported: "&7Teleported to &d%spawn%"
+  world-missing: "&cThat spawn world is not loaded"
+  random-missing: "&cNo spawn worlds are available"
+  void-teleported: "&7Saved from the void and sent to &d%spawn%"
+  void-missing: "&cNo safe spawn is available"

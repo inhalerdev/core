@@ -8,6 +8,7 @@ import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.economy.EconomyModule;
 import net.mineacle.core.homes.HomesModule;
 import net.mineacle.core.placeholders.PlaceholdersModule;
+import net.mineacle.core.spawn.SpawnModule;
 import net.mineacle.core.stats.StatsModule;
 import net.mineacle.core.teams.TeamsModule;
 import net.mineacle.core.tpa.TpaModule;
@@ -64,8 +65,9 @@ public final class Core extends JavaPlugin {
             registerModule(new BalTopModule());
             registerModule(new ChatModule());
             registerModule(new PlaceholdersModule());
+            registerModule(new SpawnModule());
 
-            getLogger().info("MineacleCore enabled successfully.");
+            getLogger().info("MineacleCore enabled successfully");
         } catch (Exception exception) {
             getLogger().severe("Failed to enable MineacleCore: " + exception.getMessage());
             exception.printStackTrace();
