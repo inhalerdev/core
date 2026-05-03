@@ -8,7 +8,7 @@ worlds:
     enabled: true
     slot: 11
     display-name: "&dSpawn 1"
-    world: "lobby1"
+    world: "spawn1"
     x: 0.5
     y: 76.0
     z: -0.5
@@ -19,7 +19,7 @@ worlds:
     enabled: true
     slot: 12
     display-name: "&dSpawn 2"
-    world: "lobby2"
+    world: "spawn2"
     x: 0.5
     y: 76.0
     z: -0.5
@@ -30,7 +30,7 @@ worlds:
     enabled: true
     slot: 13
     display-name: "&dSpawn 3"
-    world: "lobby3"
+    world: "spawn3"
     x: 0.5
     y: 76.0
     z: -0.5
