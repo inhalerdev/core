@@ -5,6 +5,7 @@ import net.mineacle.core.common.player.DisplayNames;
 import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
+import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamInviteService;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
@@ -32,11 +33,14 @@ public final class TeamsMainGui {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            player.sendMessage(TextColor.color("&cYou are not in a team."));
-            player.sendMessage(TextColor.color("&#bbbbbbType &d/team create &#bbbbbbto create a team."));
-            player.sendMessage(TextColor.color("&#bbbbbbType &d/team join &#bbbbbbto view invites."));
+            player.sendMessage(TextColor.color("&cYou are not in a team"));
+            player.sendMessage(TextColor.color("&#bbbbbbType &d/team create &#bbbbbbto create a team"));
+            player.sendMessage(TextColor.color("&#bbbbbbType &d/team join &#bbbbbbto view invites"));
             return;
         }
+
+        TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
+        boolean hasTeamHome = teamHomeService.hasTeamHome(team.teamId());
 
         int memberCount = teamService.getTeamMembers(team.teamId()).size();
 
@@ -79,11 +83,7 @@ public final class TeamsMainGui {
             ));
         }
 
-        inventory.setItem(47, item(
-                Material.PURPLE_BANNER,
-                "&dTeam Home",
-                List.of("&#bbbbbbClick to teleport to Team Home")
-        ));
+        inventory.setItem(47, teamHomeItem(hasTeamHome));
 
         inventory.setItem(49, item(
                 Material.BOOK,
@@ -101,10 +101,32 @@ public final class TeamsMainGui {
         player.openInventory(inventory);
     }
 
+    private static ItemStack teamHomeItem(boolean hasTeamHome) {
+        if (hasTeamHome) {
+            return item(
+                    Material.PURPLE_BANNER,
+                    "&dTeam Home",
+                    List.of(
+                            "&#bbbbbbStatus: &aSet",
+                            "&#bbbbbbClick to teleport to Team Home"
+                    )
+            );
+        }
+
+        return item(
+                Material.WHITE_BANNER,
+                "&fTeam Home",
+                List.of(
+                        "&#bbbbbbStatus: &cNot Set",
+                        "&#bbbbbbClick to open Homes and set Team Home"
+                )
+        );
+    }
+
     private static ItemStack pvpItem(boolean friendlyFire) {
         return item(
                 Material.DIAMOND_SWORD,
-                "&dTeam PVP",
+                "&dTeam PvP",
                 List.of("&#bbbbbbCurrently: " + (friendlyFire ? "&aON" : "&cOFF"))
         );
     }

@@ -34,12 +34,20 @@ public final class MenuCloseListener implements Listener {
         return title.equalsIgnoreCase("Homes")
                 || title.equalsIgnoreCase("Delete Home")
                 || title.equalsIgnoreCase("Delete Team Home")
-                || title.startsWith("Team:")
-                || title.startsWith("Member:")
                 || title.equalsIgnoreCase("Team Invite")
                 || title.equalsIgnoreCase("Confirm Action")
                 || title.equalsIgnoreCase("Teleport Request")
+                || title.startsWith("Member:")
                 || title.startsWith("Balance Top (Page ")
-                || title.endsWith(" Stats");
+                || title.endsWith(" Stats")
+                || isTeamsMainMenu(title);
+    }
+
+    private boolean isTeamsMainMenu(String title) {
+        if (title.startsWith("Balance Top")) {
+            return false;
+        }
+
+        return title.matches(".+ \\(\\d+/\\d+\\)");
     }
 }

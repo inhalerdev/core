@@ -6,6 +6,8 @@ import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import net.mineacle.core.Core;
 import net.mineacle.core.common.gui.MenuHistory;
 import net.mineacle.core.common.text.TextColor;
+import net.mineacle.core.homes.gui.HomesMainGui;
+import net.mineacle.core.homes.service.HomeService;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
@@ -38,6 +40,7 @@ public final class TeamsGuiListener implements Listener {
     private final TeamService teamService;
     private final TeamInviteService inviteService;
     private final TeamHomeService teamHomeService;
+    private final HomeService homeService;
     private final TeleportService teleportService;
     private final PlayerStatisticsGui playerStatisticsGui;
 
@@ -46,6 +49,7 @@ public final class TeamsGuiListener implements Listener {
             TeamService teamService,
             TeamInviteService inviteService,
             TeamHomeService teamHomeService,
+            HomeService homeService,
             TeleportService teleportService,
             PlayerStatisticsGui playerStatisticsGui
     ) {
@@ -53,6 +57,7 @@ public final class TeamsGuiListener implements Listener {
         this.teamService = teamService;
         this.inviteService = inviteService;
         this.teamHomeService = teamHomeService;
+        this.homeService = homeService;
         this.teleportService = teleportService;
         this.playerStatisticsGui = playerStatisticsGui;
     }
@@ -101,8 +106,6 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private boolean isTeamMainMenu(String title) {
-        TeamRecord viewerTeam = null;
-
         for (Player online : core.getServer().getOnlinePlayers()) {
             TeamRecord possibleTeam = teamService.getTeamByPlayer(online.getUniqueId());
 
@@ -118,12 +121,11 @@ public final class TeamsGuiListener implements Listener {
                     + ")";
 
             if (title.equals(expectedTitle)) {
-                viewerTeam = possibleTeam;
-                break;
+                return true;
             }
         }
 
-        return viewerTeam != null;
+        return false;
     }
 
     private void handleMainClick(Player player, int slot) {
@@ -155,7 +157,7 @@ public final class TeamsGuiListener implements Listener {
                     && members.size() < teamService.maxMembers()) {
                 player.closeInventory();
 
-                Component invitePrompt = Component.text("§7Type §d/team invite <player> §7to invite a player.")
+                Component invitePrompt = Component.text("§7Type §d/team invite <player> §7to invite a player")
                         .clickEvent(ClickEvent.suggestCommand("/team invite "));
 
                 player.sendMessage(invitePrompt);
@@ -165,20 +167,7 @@ public final class TeamsGuiListener implements Listener {
         }
 
         if (slot == 47) {
-            org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
-
-            if (home == null) {
-                player.sendMessage("§cYour team does not have a home set.");
-                player.sendMessage("§7Team Home can only be set from the §d/homes §7menu.");
-                return;
-            }
-
-            player.closeInventory();
-
-            teleportService.begin(player, "Team Home", () -> {
-                player.teleport(home);
-                player.sendMessage("§aTeleported to Team Home.");
-            });
+            handleTeamHomeButton(player, team);
             return;
         }
 
@@ -186,23 +175,52 @@ public final class TeamsGuiListener implements Listener {
             boolean newValue = !team.friendlyFire();
             teamService.setFriendlyFire(team.teamId(), newValue);
 
-            String message = newValue ? "§aTeam PvP enabled." : "§cTeam PvP disabled.";
+            String message = newValue ? "§aTeam PvP enabled" : "§cTeam PvP disabled";
 
-            player.sendMessage(message);
-            player.sendActionBar(actionBar(message));
+            sendBoth(player, message);
 
             TeamsMainGui.open(core, player, teamService, inviteService);
         }
     }
 
+    private void handleTeamHomeButton(Player player, TeamRecord team) {
+        org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
+
+        if (home != null) {
+            player.closeInventory();
+
+            teleportService.begin(player, "Team Home", () -> {
+                player.teleport(home);
+                sendBoth(player, "§7Teleported to §dTeam Home");
+            });
+
+            return;
+        }
+
+        if (!teamService.isFounder(player.getUniqueId())) {
+            sendBoth(player, "§cYour team does not have a home set");
+            player.sendMessage("§7Ask your §dteam founder §7to set Team Home");
+            return;
+        }
+
+        sendBoth(player, "§7Open Homes to set §dTeam Home");
+
+        MenuHistory.openChild(
+                core,
+                player,
+                () -> TeamsMainGui.open(core, player, teamService, inviteService),
+                () -> HomesMainGui.open(core, player, homeService)
+        );
+    }
+
     private void handleInviteClick(Player player, int slot) {
         if (slot == 11) {
             if (inviteService.acceptInvite(player.getUniqueId())) {
-                player.sendMessage("§aInvite accepted.");
+                sendBoth(player, "§aInvite accepted");
                 MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             } else {
                 player.closeInventory();
-                player.sendMessage("§cCould not accept invite.");
+                sendBoth(player, "§cCould not accept invite");
             }
 
             return;
@@ -211,10 +229,10 @@ public final class TeamsGuiListener implements Listener {
         if (slot == 15) {
             if (inviteService.denyInvite(player.getUniqueId())) {
                 player.closeInventory();
-                player.sendMessage("§cInvite declined.");
+                sendBoth(player, "§cInvite declined");
             } else {
                 player.closeInventory();
-                player.sendMessage("§cNo invite found.");
+                sendBoth(player, "§cNo invite found");
             }
         }
     }
@@ -230,6 +248,7 @@ public final class TeamsGuiListener implements Listener {
 
         if (target == null) {
             player.closeInventory();
+            sendBoth(player, "§cThat player is no longer in your team");
             return;
         }
 
@@ -277,19 +296,25 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private void handleConfirmClick(Player player, int slot) {
-        if (slot == 11) {
+        if (slot == TeamConfirmGui.CANCEL_SLOT) {
             clearConfirmMeta(player);
             player.closeInventory();
-            player.sendMessage("§cAction cancelled.");
+            sendBoth(player, "§cAction cancelled");
             return;
         }
 
-        if (slot != 13 && slot != 15) {
+        if (slot == TeamConfirmGui.ACTION_SLOT) {
+            return;
+        }
+
+        if (slot != TeamConfirmGui.CONFIRM_SLOT) {
             return;
         }
 
         if (!player.hasMetadata(META_ACTION)) {
+            clearConfirmMeta(player);
             player.closeInventory();
+            sendBoth(player, "§cNo action is ready to confirm");
             return;
         }
 
@@ -300,20 +325,81 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (action.equals("DISBAND")) {
-            if (teamService.disbandTeam(player.getUniqueId())) {
+        executeConfirmedAction(player, action);
+    }
+
+    private void executeConfirmedAction(Player player, String action) {
+        switch (action) {
+            case "DISBAND" -> {
+                if (teamService.disbandTeam(player.getUniqueId())) {
+                    clearConfirmMeta(player);
+                    player.closeInventory();
+                    sendBoth(player, "§cTeam disbanded");
+                    return;
+                }
+
                 clearConfirmMeta(player);
                 player.closeInventory();
-                player.sendMessage("§cTeam disbanded.");
-                return;
+                sendBoth(player, "§cOnly the founder can disband the team");
             }
 
-            player.sendMessage("§cOnly the founder can disband the team.");
-            return;
-        }
+            case "LEAVE" -> {
+                if (teamService.removeMember(player.getUniqueId())) {
+                    clearConfirmMeta(player);
+                    player.closeInventory();
+                    sendBoth(player, "§cYou left your team");
+                    return;
+                }
 
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot leave as founder Use /team disband");
+            }
+
+            case "DELETE_HOME" -> {
+                TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
+
+                if (team == null) {
+                    clearConfirmMeta(player);
+                    player.closeInventory();
+                    sendBoth(player, "§cYou are not in a team");
+                    return;
+                }
+
+                if (!teamService.isAdmin(player.getUniqueId())) {
+                    clearConfirmMeta(player);
+                    player.closeInventory();
+                    sendBoth(player, "§cOnly admins can delete team home");
+                    return;
+                }
+
+                if (!teamHomeService.deleteTeamHome(team.teamId())) {
+                    clearConfirmMeta(player);
+                    player.closeInventory();
+                    sendBoth(player, "§cYour team does not have a home set");
+                    return;
+                }
+
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cTeam home deleted");
+            }
+
+            case "PROMOTE", "DEMOTE", "KICK", "BAN" -> executeConfirmedTargetAction(player, action);
+
+            default -> {
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cUnknown action");
+            }
+        }
+    }
+
+    private void executeConfirmedTargetAction(Player player, String action) {
         if (!player.hasMetadata(META_TARGET)) {
+            clearConfirmMeta(player);
             player.closeInventory();
+            sendBoth(player, "§cNo player is selected");
             return;
         }
 
@@ -323,48 +409,60 @@ public final class TeamsGuiListener implements Listener {
             case "PROMOTE" -> {
                 if (teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.ADMIN)) {
                     clearConfirmMeta(player);
-                    player.sendMessage("§aPlayer promoted.");
+                    sendBoth(player, "§aPlayer promoted");
                     MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
                     return;
                 }
 
-                player.sendMessage("§cYou cannot promote this player.");
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot promote this player");
             }
 
             case "DEMOTE" -> {
                 if (teamService.setMemberRole(player.getUniqueId(), targetId, TeamRole.MEMBER)) {
                     clearConfirmMeta(player);
-                    player.sendMessage("§aPlayer demoted.");
+                    sendBoth(player, "§aPlayer demoted");
                     MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
                     return;
                 }
 
-                player.sendMessage("§cYou cannot demote this player.");
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot demote this player");
             }
 
             case "KICK" -> {
                 if (teamService.kickMember(player.getUniqueId(), targetId)) {
                     clearConfirmMeta(player);
-                    player.sendMessage("§cPlayer kicked.");
+                    sendBoth(player, "§cPlayer kicked");
                     MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
                     return;
                 }
 
-                player.sendMessage("§cYou cannot kick that player.");
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot kick that player");
             }
 
             case "BAN" -> {
                 if (teamService.banMember(player.getUniqueId(), targetId)) {
                     clearConfirmMeta(player);
-                    player.sendMessage("§cPlayer banned from this team.");
+                    sendBoth(player, "§cPlayer banned from this team");
                     MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
                     return;
                 }
 
-                player.sendMessage("§cYou cannot ban that player.");
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot ban that player");
             }
 
-            default -> player.closeInventory();
+            default -> {
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cUnknown action");
+            }
         }
     }
 
@@ -379,10 +477,9 @@ public final class TeamsGuiListener implements Listener {
     private void markConfirmReady(Player player, String action) {
         player.setMetadata(META_CONFIRM, new FixedMetadataValue(core, action));
 
-        String message = "§7Click confirm again to continue.";
+        String message = "§7Click confirm again to continue";
 
-        player.sendActionBar(actionBar(message));
-        player.sendMessage(message);
+        sendBoth(player, message);
 
         core.getServer().getScheduler().runTaskLater(core, () -> {
             if (!player.isOnline()) {
@@ -400,11 +497,7 @@ public final class TeamsGuiListener implements Listener {
             }
 
             player.removeMetadata(META_CONFIRM, core);
-
-            String timeoutMessage = "§cAction timed out.";
-
-            player.sendActionBar(actionBar(timeoutMessage));
-            player.sendMessage(timeoutMessage);
+            sendBoth(player, "§cAction timed out");
         }, 20L * 5L);
     }
 
@@ -412,6 +505,11 @@ public final class TeamsGuiListener implements Listener {
         player.removeMetadata(META_ACTION, core);
         player.removeMetadata(META_TARGET, core);
         player.removeMetadata(META_CONFIRM, core);
+    }
+
+    private void sendBoth(Player player, String message) {
+        player.sendMessage(message);
+        player.sendActionBar(actionBar(message));
     }
 
     private Component actionBar(String message) {

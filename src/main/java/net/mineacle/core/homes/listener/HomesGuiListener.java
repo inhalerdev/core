@@ -10,7 +10,6 @@ import net.mineacle.core.homes.gui.HomesMainGui;
 import net.mineacle.core.homes.service.HomeService;
 import net.mineacle.core.homes.service.HomeWorldRules;
 import net.mineacle.core.homes.service.TeleportService;
-import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.model.TeamRecord;
 import net.mineacle.core.teams.service.TeamHomeService;
 import net.mineacle.core.teams.service.TeamService;
@@ -54,6 +53,8 @@ public final class HomesGuiListener implements Listener {
 
         String homesTitle = org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.title"));
         String deleteTitle = org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.delete-title"));
+        String teamDeleteTitle = org.bukkit.ChatColor.translateAlternateColorCodes('&', core.getMessage("homes.gui.team-delete-title"));
+
         int slot = event.getRawSlot();
 
         if (event.getView().getTitle().equals(homesTitle)) {
@@ -87,7 +88,7 @@ public final class HomesGuiListener implements Listener {
             return;
         }
 
-        if (event.getView().getTitle().equals(TeamConfirmGui.DELETE_HOME_TITLE)) {
+        if (event.getView().getTitle().equals(teamDeleteTitle)) {
             event.setCancelled(true);
             handleTeamHomeDeleteConfirm(player, slot);
         }
@@ -100,7 +101,11 @@ public final class HomesGuiListener implements Listener {
             Location target = homeService.get(uuid, id);
 
             if (target == null) {
-                player.sendMessage(core.getMessage("homes.not-set").replace("%home%", homeService.getDisplayName(uuid, id)));
+                String message = stripTrailingPeriod(core.getMessage("homes.not-set")
+                        .replace("%home%", homeService.getDisplayName(uuid, id)));
+
+                player.sendActionBar(actionBar(message));
+                player.sendMessage(message);
                 return;
             }
 
@@ -109,8 +114,8 @@ public final class HomesGuiListener implements Listener {
             teleportService.begin(player, homeService.getDisplayName(uuid, id), () -> {
                 player.teleport(target);
 
-                String message = core.getMessage("homes.teleported")
-                        .replace("%home%", homeService.getDisplayName(uuid, id));
+                String message = stripTrailingPeriod(core.getMessage("homes.teleported")
+                        .replace("%home%", homeService.getDisplayName(uuid, id)));
 
                 player.sendActionBar(actionBar(message));
                 player.sendMessage(message);
@@ -125,7 +130,7 @@ public final class HomesGuiListener implements Listener {
         }
 
         if (worldRules.isBlockedWorld(player.getLocation())) {
-            String message = core.getMessage("homes.blocked-world");
+            String message = stripTrailingPeriod(core.getMessage("homes.blocked-world"));
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
             return;
@@ -133,8 +138,8 @@ public final class HomesGuiListener implements Listener {
 
         homeService.set(uuid, id, player.getLocation(), homeService.getDefaultDisplayName(id));
 
-        String message = core.getMessage("homes.set")
-                .replace("%home%", homeService.getDisplayName(uuid, id));
+        String message = stripTrailingPeriod(core.getMessage("homes.set")
+                .replace("%home%", homeService.getDisplayName(uuid, id)));
 
         player.sendActionBar(actionBar(message));
         player.sendMessage(message);
@@ -152,7 +157,7 @@ public final class HomesGuiListener implements Listener {
             }
 
             if (worldRules.isBlockedWorld(player.getLocation())) {
-                String message = core.getMessage("homes.blocked-world");
+                String message = stripTrailingPeriod(core.getMessage("homes.blocked-world"));
                 player.sendActionBar(actionBar(message));
                 player.sendMessage(message);
                 return;
@@ -160,8 +165,8 @@ public final class HomesGuiListener implements Listener {
 
             homeService.set(uuid, id, player.getLocation(), homeService.getDefaultDisplayName(id));
 
-            String message = core.getMessage("homes.set")
-                    .replace("%home%", homeService.getDisplayName(uuid, id));
+            String message = stripTrailingPeriod(core.getMessage("homes.set")
+                    .replace("%home%", homeService.getDisplayName(uuid, id)));
 
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
@@ -201,12 +206,15 @@ public final class HomesGuiListener implements Listener {
         if (!hasHome) {
             if (!isAdmin) {
                 player.closeInventory();
-                player.sendMessage("§7Ask your §dteam owner §7to set Team Home");
+
+                String message = "§7Ask your §dteam founder §7to set Team Home";
+                player.sendActionBar(actionBar(message));
+                player.sendMessage(message);
                 return;
             }
 
             if (worldRules.isTeamHomeBlockedWorld(player.getLocation())) {
-                String message = core.getMessage("homes.blocked-team-home-world");
+                String message = stripTrailingPeriod(core.getMessage("homes.blocked-team-home-world"));
                 player.sendActionBar(actionBar(message));
                 player.sendMessage(message);
                 return;
@@ -226,7 +234,9 @@ public final class HomesGuiListener implements Listener {
             Location home = teamHomeService.getTeamHome(team.teamId());
 
             if (home == null) {
-                player.sendMessage("§cYour team does not have a home set.");
+                String message = "§cYour team does not have a home set";
+                player.sendActionBar(actionBar(message));
+                player.sendMessage(message);
                 return;
             }
 
@@ -246,8 +256,14 @@ public final class HomesGuiListener implements Listener {
         if (slot == dyeSlot && isFounder) {
             player.setMetadata(META_TEAM_HOME_PENDING, new FixedMetadataValue(core, team.teamId()));
             player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, false));
+            ConfirmDeleteHomeGui.openTeamDelete(core, player);
+            return;
+        }
 
-            TeamConfirmGui.openDeleteHome(core, player);
+        if (slot == dyeSlot) {
+            String message = "§cOnly the founder can delete Team Home";
+            player.sendActionBar(actionBar(message));
+            player.sendMessage(message);
         }
     }
 
@@ -258,30 +274,37 @@ public final class HomesGuiListener implements Listener {
         }
 
         String teamId = player.getMetadata(META_TEAM_HOME_PENDING).get(0).asString();
+
         boolean confirmed = player.hasMetadata(META_TEAM_HOME_CONFIRM)
                 && player.getMetadata(META_TEAM_HOME_CONFIRM).get(0).asBoolean();
 
-        if (slot == 11) {
+        if (slot == ConfirmDeleteHomeGui.CANCEL_SLOT) {
             clearTeamHomeDeleteMeta(player);
             player.closeInventory();
             HomesMainGui.open(core, player, homeService);
 
-            String message = "§cTeam home delete cancelled.";
+            String message = "§cTeam home delete cancelled";
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
             return;
         }
 
-        if (slot != 15) {
+        if (slot == ConfirmDeleteHomeGui.ACTION_SLOT) {
+            return;
+        }
+
+        if (slot != ConfirmDeleteHomeGui.CONFIRM_SLOT) {
             return;
         }
 
         if (!confirmed) {
             player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, true));
 
-            String message = "§cClick confirm again to delete team home.";
+            String message = "§7Click confirm again to continue";
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
+
+            int timeout = core.getConfig().getInt("homes.delete-confirm.timeout-seconds", 5);
 
             core.getServer().getScheduler().runTaskLater(core, () -> {
                 if (!player.isOnline()) {
@@ -298,11 +321,11 @@ public final class HomesGuiListener implements Listener {
                 if (currentTeamId.equals(teamId) && currentConfirmed) {
                     player.setMetadata(META_TEAM_HOME_CONFIRM, new FixedMetadataValue(core, false));
 
-                    String timeoutMessage = "§cTeam home delete timed out.";
+                    String timeoutMessage = "§cAction timed out";
                     player.sendActionBar(actionBar(timeoutMessage));
                     player.sendMessage(timeoutMessage);
                 }
-            }, 20L * 5);
+            }, 20L * Math.max(1, timeout));
 
             return;
         }
@@ -310,12 +333,22 @@ public final class HomesGuiListener implements Listener {
         TeamService teamService = new TeamService(core);
         TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
 
-        teamHomeService.deleteTeamHome(teamId);
+        if (!teamHomeService.deleteTeamHome(teamId)) {
+            clearTeamHomeDeleteMeta(player);
+            player.closeInventory();
+
+            String message = "§cYour team does not have a home set";
+            player.sendActionBar(actionBar(message));
+            player.sendMessage(message);
+
+            HomesMainGui.open(core, player, homeService);
+            return;
+        }
 
         clearTeamHomeDeleteMeta(player);
         player.closeInventory();
 
-        String message = "§cTeam Home deleted.";
+        String message = "§cTeam Home deleted";
         player.sendActionBar(actionBar(message));
         player.sendMessage(message);
 
@@ -331,19 +364,23 @@ public final class HomesGuiListener implements Listener {
         int id = player.getMetadata(META_HOME_PENDING).get(0).asInt();
         String displayName = homeService.getDisplayName(player.getUniqueId(), id);
 
-        if (slot == 11) {
+        if (slot == ConfirmDeleteHomeGui.CANCEL_SLOT) {
             clearPlayerDeleteMeta(player);
             player.closeInventory();
             HomesMainGui.open(core, player, homeService);
 
-            String message = core.getMessage("homes.delete-cancelled");
+            String message = stripTrailingPeriod(core.getMessage("homes.delete-cancelled"));
 
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
             return;
         }
 
-        if (slot != 15) {
+        if (slot == ConfirmDeleteHomeGui.ACTION_SLOT) {
+            return;
+        }
+
+        if (slot != ConfirmDeleteHomeGui.CONFIRM_SLOT) {
             return;
         }
 
@@ -354,8 +391,8 @@ public final class HomesGuiListener implements Listener {
             clearPlayerDeleteMeta(player);
             player.closeInventory();
 
-            String message = core.getMessage("homes.deleted")
-                    .replace("%home%", displayName);
+            String message = stripTrailingPeriod(core.getMessage("homes.deleted")
+                    .replace("%home%", displayName));
 
             player.sendActionBar(actionBar(message));
             player.sendMessage(message);
@@ -364,14 +401,10 @@ public final class HomesGuiListener implements Listener {
 
         player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, id));
 
-        String actionBarMessage = core.getMessage("homes.gui.click-delete-again-actionbar")
-                .replace("%home%", displayName);
+        String message = "§7Click confirm again to continue";
 
-        String chat = core.getMessage("homes.gui.click-delete-again-chat")
-                .replace("%home%", displayName);
-
-        player.sendActionBar(actionBar(actionBarMessage));
-        player.sendMessage(chat);
+        player.sendActionBar(actionBar(message));
+        player.sendMessage(message);
 
         int timeout = core.getConfig().getInt("homes.delete-confirm.timeout-seconds", 5);
 
@@ -390,7 +423,7 @@ public final class HomesGuiListener implements Listener {
             if (pendingId == id && currentConfirmValue == id) {
                 player.setMetadata(META_HOME_CONFIRM, new FixedMetadataValue(core, 0));
 
-                String timeoutMessage = core.getMessage("homes.delete-timeout");
+                String timeoutMessage = "§cAction timed out";
 
                 player.sendActionBar(actionBar(timeoutMessage));
                 player.sendMessage(timeoutMessage);
@@ -411,19 +444,33 @@ public final class HomesGuiListener implements Listener {
     private void sendUpgradeMessage(Player player) {
         player.closeInventory();
         player.sendMessage(" ");
-        player.sendMessage(core.getMessage("homes.upgrade-line-1"));
+        player.sendMessage(stripTrailingPeriod(core.getMessage("homes.upgrade-line-1")));
         player.sendMessage(" ");
-        player.sendMessage(core.getMessage("homes.upgrade-line-2"));
+        player.sendMessage(stripTrailingPeriod(core.getMessage("homes.upgrade-line-2")));
         player.sendMessage(" ");
     }
 
     private void sendCreateTeamPrompt(Player player) {
-        player.sendMessage("§cYou are not in a team.");
+        player.sendMessage("§cYou are not in a team");
 
-        Component clickable = Component.text("§7Type §d/team create <name> §7to create a team.")
+        Component clickable = Component.text("§7Type §d/team create <name> §7to create a team")
                 .clickEvent(ClickEvent.suggestCommand("/team create "));
 
         player.sendMessage(clickable);
+    }
+
+    private String stripTrailingPeriod(String message) {
+        if (message == null || message.isBlank()) {
+            return "";
+        }
+
+        String output = message;
+
+        while (output.endsWith(".")) {
+            output = output.substring(0, output.length() - 1);
+        }
+
+        return output;
     }
 
     private Component actionBar(String message) {
