@@ -34,6 +34,8 @@ public final class MenuCloseListener implements Listener {
         return title.equalsIgnoreCase("Homes")
                 || title.equalsIgnoreCase("Delete Home")
                 || title.equalsIgnoreCase("Delete Team Home")
+                || title.equalsIgnoreCase("Team Menu")
+                || title.equalsIgnoreCase("Team Invites")
                 || title.equalsIgnoreCase("Team Invite")
                 || title.equalsIgnoreCase("Confirm Action")
                 || title.equalsIgnoreCase("Teleport Request")

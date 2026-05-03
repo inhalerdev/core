@@ -13,6 +13,7 @@ import net.mineacle.core.stats.PlayerStatisticsGui;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamInviteGui;
 import net.mineacle.core.teams.gui.TeamMemberGui;
+import net.mineacle.core.teams.gui.TeamStartGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamMemberRecord;
 import net.mineacle.core.teams.model.TeamRecord;
@@ -81,6 +82,12 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
+        if (title.equals(ChatColor.stripColor(TeamStartGui.TITLE))) {
+            event.setCancelled(true);
+            handleStartClick(player, slot);
+            return;
+        }
+
         if (isTeamMainMenu(title)) {
             event.setCancelled(true);
             handleMainClick(player, slot);
@@ -128,11 +135,33 @@ public final class TeamsGuiListener implements Listener {
         return false;
     }
 
+    private void handleStartClick(Player player, int slot) {
+        if (slot == TeamStartGui.CREATE_SLOT) {
+            player.closeInventory();
+
+            Component prompt = Component.text(TextColor.color("§7Type §d/team create <name> §7to create a team"))
+                    .clickEvent(ClickEvent.suggestCommand("/team create "));
+
+            player.sendMessage(prompt);
+            player.sendActionBar(actionBar("§7Type §d/team create <name> §7to create a team"));
+            return;
+        }
+
+        if (slot == TeamStartGui.INVITES_SLOT) {
+            MenuHistory.openChild(
+                    core,
+                    player,
+                    () -> TeamStartGui.open(core, player, inviteService),
+                    () -> TeamInviteGui.open(core, player, inviteService, teamService)
+            );
+        }
+    }
+
     private void handleMainClick(Player player, int slot) {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            player.closeInventory();
+            MenuHistory.openRoot(core, player, () -> TeamStartGui.open(core, player, inviteService));
             return;
         }
 
@@ -166,12 +195,21 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 47) {
+        if (slot == TeamsMainGui.TEAM_HOME_SLOT) {
             handleTeamHomeButton(player, team);
             return;
         }
 
-        if (slot == 51 && teamService.isAdmin(player.getUniqueId())) {
+        if (slot == TeamsMainGui.TEAM_CHAT_SLOT) {
+            boolean enabled = teamService.toggleTeamChat(player.getUniqueId());
+            String message = enabled ? "§7Team chat enabled" : "§7Team chat disabled";
+
+            sendBoth(player, message);
+            TeamsMainGui.open(core, player, teamService, inviteService);
+            return;
+        }
+
+        if (slot == TeamsMainGui.TEAM_PVP_SLOT && teamService.isAdmin(player.getUniqueId())) {
             boolean newValue = !team.friendlyFire();
             teamService.setFriendlyFire(team.teamId(), newValue);
 
@@ -214,7 +252,7 @@ public final class TeamsGuiListener implements Listener {
     }
 
     private void handleInviteClick(Player player, int slot) {
-        if (slot == 11) {
+        if (slot == TeamInviteGui.ACCEPT_SLOT) {
             if (inviteService.acceptInvite(player.getUniqueId())) {
                 sendBoth(player, "§aInvite accepted");
                 MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
@@ -226,7 +264,7 @@ public final class TeamsGuiListener implements Listener {
             return;
         }
 
-        if (slot == 15) {
+        if (slot == TeamInviteGui.DENY_SLOT) {
             if (inviteService.denyInvite(player.getUniqueId())) {
                 player.closeInventory();
                 sendBoth(player, "§cInvite declined");
@@ -279,6 +317,11 @@ public final class TeamsGuiListener implements Listener {
 
         if (slot == 16) {
             startConfirm(player, "BAN", targetId, "Ban Player");
+            return;
+        }
+
+        if (slot == 22) {
+            startConfirm(player, "TRANSFER", targetId, "Transfer Founder");
         }
     }
 
@@ -385,7 +428,7 @@ public final class TeamsGuiListener implements Listener {
                 sendBoth(player, "§cTeam home deleted");
             }
 
-            case "PROMOTE", "DEMOTE", "KICK", "BAN" -> executeConfirmedTargetAction(player, action);
+            case "PROMOTE", "DEMOTE", "KICK", "BAN", "TRANSFER" -> executeConfirmedTargetAction(player, action);
 
             default -> {
                 clearConfirmMeta(player);
@@ -456,6 +499,19 @@ public final class TeamsGuiListener implements Listener {
                 clearConfirmMeta(player);
                 player.closeInventory();
                 sendBoth(player, "§cYou cannot ban that player");
+            }
+
+            case "TRANSFER" -> {
+                if (teamService.transferFounder(player.getUniqueId(), targetId)) {
+                    clearConfirmMeta(player);
+                    sendBoth(player, "§aFounder transferred");
+                    MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
+                    return;
+                }
+
+                clearConfirmMeta(player);
+                player.closeInventory();
+                sendBoth(player, "§cYou cannot transfer founder to that player");
             }
 
             default -> {

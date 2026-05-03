@@ -43,6 +43,8 @@ teams:
   enabled: true
   max-members: 45
   ban-days: 7
+  invites:
+    timeout-seconds: 120
 
 tpa:
   enabled: true

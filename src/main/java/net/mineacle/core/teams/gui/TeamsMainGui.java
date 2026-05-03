@@ -26,6 +26,11 @@ public final class TeamsMainGui {
 
     public static final String TITLE_SUFFIX = ")";
 
+    public static final int TEAM_HOME_SLOT = 47;
+    public static final int TEAM_CHAT_SLOT = 48;
+    public static final int TEAM_INFO_SLOT = 49;
+    public static final int TEAM_PVP_SLOT = 51;
+
     private TeamsMainGui() {
     }
 
@@ -33,14 +38,13 @@ public final class TeamsMainGui {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            player.sendMessage(TextColor.color("&cYou are not in a team"));
-            player.sendMessage(TextColor.color("&#bbbbbbType &d/team create &#bbbbbbto create a team"));
-            player.sendMessage(TextColor.color("&#bbbbbbType &d/team join &#bbbbbbto view invites"));
+            TeamStartGui.open(core, player, inviteService);
             return;
         }
 
         TeamHomeService teamHomeService = new TeamHomeService(core, teamService);
         boolean hasTeamHome = teamHomeService.hasTeamHome(team.teamId());
+        boolean teamChatEnabled = teamService.isTeamChatEnabled(player.getUniqueId());
 
         int memberCount = teamService.getTeamMembers(team.teamId()).size();
 
@@ -83,9 +87,10 @@ public final class TeamsMainGui {
             ));
         }
 
-        inventory.setItem(47, teamHomeItem(hasTeamHome));
+        inventory.setItem(TEAM_HOME_SLOT, teamHomeItem(hasTeamHome));
+        inventory.setItem(TEAM_CHAT_SLOT, teamChatItem(teamChatEnabled));
 
-        inventory.setItem(49, item(
+        inventory.setItem(TEAM_INFO_SLOT, item(
                 Material.BOOK,
                 "&dTeam Info",
                 List.of(
@@ -95,7 +100,7 @@ public final class TeamsMainGui {
         ));
 
         if (teamService.isAdmin(player.getUniqueId())) {
-            inventory.setItem(51, pvpItem(team.friendlyFire()));
+            inventory.setItem(TEAM_PVP_SLOT, pvpItem(team.friendlyFire()));
         }
 
         player.openInventory(inventory);
@@ -123,11 +128,25 @@ public final class TeamsMainGui {
         );
     }
 
+    private static ItemStack teamChatItem(boolean enabled) {
+        return item(
+                enabled ? Material.LIME_DYE : Material.GRAY_DYE,
+                "&dTeam Chat",
+                List.of(
+                        "&#bbbbbbCurrently: " + (enabled ? "&aEnabled" : "&cDisabled"),
+                        "&#bbbbbbClick to toggle"
+                )
+        );
+    }
+
     private static ItemStack pvpItem(boolean friendlyFire) {
         return item(
                 Material.DIAMOND_SWORD,
                 "&dTeam PvP",
-                List.of("&#bbbbbbCurrently: " + (friendlyFire ? "&aON" : "&cOFF"))
+                List.of(
+                        "&#bbbbbbCurrently: " + (friendlyFire ? "&aON" : "&cOFF"),
+                        "&#bbbbbbClick to toggle"
+                )
         );
     }
 

@@ -3,6 +3,7 @@ package net.mineacle.core.teams.gui;
 import net.mineacle.core.common.player.DisplayNames;
 import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.teams.model.TeamMemberRecord;
+import net.mineacle.core.teams.model.TeamRole;
 import net.mineacle.core.teams.service.TeamService;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -27,15 +28,17 @@ public final class TeamMemberGui {
 
     public static void open(Player viewer, UUID targetId, TeamService teamService) {
         OfflinePlayer target = Bukkit.getOfflinePlayer(targetId);
-        TeamMemberRecord member = teamService.getMember(targetId);
+        TeamMemberRecord viewerMember = teamService.getMember(viewer.getUniqueId());
+        TeamMemberRecord targetMember = teamService.getMember(targetId);
 
         String displayName = DisplayNames.prefixedDisplayName(target);
-        String role = member == null ? "Unknown" : member.role().displayName();
+        String titleName = TextColor.strip(DisplayNames.displayName(target));
+        String role = targetMember == null ? "Unknown" : targetMember.role().displayName();
 
         Inventory inventory = Bukkit.createInventory(
                 null,
                 27,
-                ChatColor.DARK_GRAY + TITLE_PREFIX + TextColor.strip(displayName)
+                ChatColor.DARK_GRAY + TITLE_PREFIX + titleName
         );
 
         inventory.setItem(4, playerHead(
@@ -43,53 +46,107 @@ public final class TeamMemberGui {
                 displayName,
                 List.of(
                         "&#bbbbbbRank: &d" + role,
-                        "&#bbbbbbManage this team member."
-                )
-        ));
-
-        inventory.setItem(10, item(
-                Material.LIME_DYE,
-                "&aPromote",
-                List.of(
-                        "&#bbbbbbPromote this member.",
-                        "&#bbbbbbFounder only."
-                )
-        ));
-
-        inventory.setItem(11, item(
-                Material.ORANGE_DYE,
-                "&6Demote",
-                List.of(
-                        "&#bbbbbbDemote this member.",
-                        "&#bbbbbbFounder only."
+                        "&#bbbbbbClick options below to manage"
                 )
         ));
 
         inventory.setItem(13, item(
                 Material.BOOK,
                 "&dView Stats",
-                List.of(
-                        "&#bbbbbbOpen this player's stats."
-                )
+                List.of("&#bbbbbbOpen this player's stats")
         ));
 
-        inventory.setItem(15, item(
-                Material.BARRIER,
-                "&cKick",
-                List.of(
-                        "&#bbbbbbRemove this player from the team.",
-                        "&#bbbbbbAdmins can kick members."
-                )
-        ));
+        if (viewerMember == null || targetMember == null) {
+            viewer.openInventory(inventory);
+            return;
+        }
 
-        inventory.setItem(16, item(
-                Material.REDSTONE_BLOCK,
-                "&4Ban",
-                List.of(
-                        "&#bbbbbbKick and block this player",
-                        "&#bbbbbbfrom joining for &d7 days&#bbbbbb."
-                )
-        ));
+        boolean viewingSelf = viewer.getUniqueId().equals(targetId);
+        TeamRole viewerRole = viewerMember.role();
+        TeamRole targetRole = targetMember.role();
+
+        if (viewingSelf) {
+            inventory.setItem(22, item(
+                    Material.PAPER,
+                    "&dYour Team Profile",
+                    List.of(
+                            "&#bbbbbbRank: &d" + role,
+                            "&#bbbbbbUse Team Chat from the team toolbar"
+                    )
+            ));
+
+            viewer.openInventory(inventory);
+            return;
+        }
+
+        if (viewerRole == TeamRole.FOUNDER && targetRole != TeamRole.FOUNDER) {
+            if (targetRole == TeamRole.MEMBER) {
+                inventory.setItem(10, item(
+                        Material.LIME_DYE,
+                        "&aPromote",
+                        List.of(
+                                "&#bbbbbbPromote this member",
+                                "&#bbbbbbFounder only"
+                        )
+                ));
+            }
+
+            if (targetRole == TeamRole.ADMIN) {
+                inventory.setItem(11, item(
+                        Material.ORANGE_DYE,
+                        "&6Demote",
+                        List.of(
+                                "&#bbbbbbDemote this admin",
+                                "&#bbbbbbFounder only"
+                        )
+                ));
+            }
+
+            inventory.setItem(15, item(
+                    Material.BARRIER,
+                    "&cKick",
+                    List.of(
+                            "&#bbbbbbRemove this player from the team",
+                            "&#bbbbbbRequires confirmation"
+                    )
+            ));
+
+            inventory.setItem(16, item(
+                    Material.REDSTONE_BLOCK,
+                    "&4Ban",
+                    List.of(
+                            "&#bbbbbbKick and block this player",
+                            "&#bbbbbbfrom joining for &d7 days"
+                    )
+            ));
+
+            inventory.setItem(22, item(
+                    Material.NETHER_STAR,
+                    "&dTransfer Founder",
+                    List.of(
+                            "&#bbbbbbTransfer team ownership",
+                            "&#bbbbbbRequires confirmation"
+                    )
+            ));
+        } else if (viewerRole == TeamRole.ADMIN && targetRole == TeamRole.MEMBER) {
+            inventory.setItem(15, item(
+                    Material.BARRIER,
+                    "&cKick",
+                    List.of(
+                            "&#bbbbbbRemove this player from the team",
+                            "&#bbbbbbAdmins can kick members"
+                    )
+            ));
+
+            inventory.setItem(16, item(
+                    Material.REDSTONE_BLOCK,
+                    "&4Ban",
+                    List.of(
+                            "&#bbbbbbKick and block this player",
+                            "&#bbbbbbfrom joining for &d7 days"
+                    )
+            ));
+        }
 
         viewer.openInventory(inventory);
     }

@@ -44,7 +44,7 @@ public final class TeamsModule extends Module {
         this.teamService = new TeamService(core);
         activeTeamService = this.teamService;
 
-        this.inviteService = new TeamInviteService(teamService);
+        this.inviteService = new TeamInviteService(core, teamService);
         this.teamHomeService = new TeamHomeService(core, teamService);
         this.homeService = new HomeService(core);
         this.teleportService = new TeleportService(core);

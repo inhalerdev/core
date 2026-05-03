@@ -44,6 +44,7 @@ public final class TeamService {
 
     public TeamRecord getTeamByPlayer(UUID playerId) {
         TeamMemberRecord member = members.get(playerId);
+
         if (member == null) {
             return null;
         }
@@ -61,6 +62,7 @@ public final class TeamService {
         }
 
         String id = nameIndex.get(name.toLowerCase(Locale.ROOT));
+
         if (id == null) {
             return null;
         }
@@ -86,6 +88,7 @@ public final class TeamService {
                 .thenComparing(TeamMemberRecord::joinedAt));
 
         List<UUID> ids = new ArrayList<>();
+
         for (TeamMemberRecord record : records) {
             ids.add(record.playerId());
         }
@@ -171,6 +174,7 @@ public final class TeamService {
 
     public boolean addMember(String teamId, UUID playerId) {
         TeamRecord team = teams.get(teamId);
+
         if (team == null) {
             return false;
         }
@@ -194,6 +198,7 @@ public final class TeamService {
 
     public boolean removeMember(UUID playerId) {
         TeamMemberRecord member = members.get(playerId);
+
         if (member == null || member.role() == TeamRole.FOUNDER) {
             return false;
         }
@@ -280,11 +285,13 @@ public final class TeamService {
 
     public boolean isBanned(String teamId, UUID playerId) {
         Map<UUID, TeamBanRecord> teamBans = bans.get(teamId);
+
         if (teamBans == null) {
             return false;
         }
 
         TeamBanRecord record = teamBans.get(playerId);
+
         if (record == null) {
             return false;
         }
@@ -323,8 +330,43 @@ public final class TeamService {
         return true;
     }
 
+    public boolean transferFounder(UUID actorId, UUID targetId) {
+        TeamMemberRecord actor = members.get(actorId);
+        TeamMemberRecord target = members.get(targetId);
+
+        if (actor == null || target == null) {
+            return false;
+        }
+
+        if (!actor.teamId().equals(target.teamId())) {
+            return false;
+        }
+
+        if (actor.role() != TeamRole.FOUNDER) {
+            return false;
+        }
+
+        if (actorId.equals(targetId)) {
+            return false;
+        }
+
+        TeamRecord team = teams.get(actor.teamId());
+
+        if (team == null) {
+            return false;
+        }
+
+        teams.put(team.teamId(), new TeamRecord(team.teamId(), team.name(), targetId, team.friendlyFire()));
+        members.put(actorId, new TeamMemberRecord(actor.teamId(), actorId, TeamRole.ADMIN, actor.joinedAt()));
+        members.put(targetId, new TeamMemberRecord(target.teamId(), targetId, TeamRole.FOUNDER, target.joinedAt()));
+
+        save();
+        return true;
+    }
+
     public boolean disbandTeam(UUID actorId) {
         TeamRecord team = getTeamByPlayer(actorId);
+
         if (team == null || !team.founder().equals(actorId)) {
             return false;
         }
@@ -334,6 +376,7 @@ public final class TeamService {
         bans.remove(team.teamId());
 
         List<UUID> toRemove = new ArrayList<>();
+
         for (TeamMemberRecord member : members.values()) {
             if (member.teamId().equals(team.teamId())) {
                 toRemove.add(member.playerId());
@@ -354,6 +397,7 @@ public final class TeamService {
 
     public boolean setFriendlyFire(String teamId, boolean friendlyFire) {
         TeamRecord old = teams.get(teamId);
+
         if (old == null) {
             return false;
         }
@@ -393,6 +437,7 @@ public final class TeamService {
                 }
 
                 UUID founder;
+
                 try {
                     founder = UUID.fromString(founderRaw);
                 } catch (IllegalArgumentException ignored) {
@@ -404,6 +449,7 @@ public final class TeamService {
                 nameIndex.put(name.toLowerCase(Locale.ROOT), teamId);
 
                 ConfigurationSection membersSection = config.getConfigurationSection(path + ".members");
+
                 if (membersSection == null) {
                     continue;
                 }
@@ -423,9 +469,11 @@ public final class TeamService {
         }
 
         ConfigurationSection bansSection = config.getConfigurationSection("team-bans");
+
         if (bansSection != null) {
             for (String teamId : bansSection.getKeys(false)) {
                 ConfigurationSection teamBansSection = config.getConfigurationSection("team-bans." + teamId);
+
                 if (teamBansSection == null) {
                     continue;
                 }
@@ -434,11 +482,9 @@ public final class TeamService {
                     try {
                         UUID playerId = UUID.fromString(playerRaw);
                         String path = "team-bans." + teamId + "." + playerRaw;
-
                         UUID bannedBy = UUID.fromString(config.getString(path + ".banned-by", playerRaw));
                         long createdAt = config.getLong(path + ".created-at", System.currentTimeMillis());
                         long expiresAt = config.getLong(path + ".expires-at", createdAt);
-
                         TeamBanRecord record = new TeamBanRecord(teamId, playerId, bannedBy, createdAt, expiresAt);
 
                         if (!record.expired()) {
@@ -451,10 +497,12 @@ public final class TeamService {
         }
 
         ConfigurationSection chatSection = config.getConfigurationSection("team-chat");
+
         if (chatSection != null) {
             for (String uuidRaw : chatSection.getKeys(false)) {
                 try {
                     UUID uuid = UUID.fromString(uuidRaw);
+
                     if (config.getBoolean("team-chat." + uuidRaw, false)) {
                         teamChatEnabled.put(uuid, true);
                     }
@@ -473,7 +521,6 @@ public final class TeamService {
 
         for (TeamRecord team : teams.values()) {
             String path = "teams." + team.teamId();
-
             config.set(path + ".name", team.name());
             config.set(path + ".founder", team.founder().toString());
             config.set(path + ".friendly-fire", team.friendlyFire());

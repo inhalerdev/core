@@ -10,6 +10,7 @@ import net.mineacle.core.common.text.TextColor;
 import net.mineacle.core.homes.service.TeleportService;
 import net.mineacle.core.teams.gui.TeamConfirmGui;
 import net.mineacle.core.teams.gui.TeamInviteGui;
+import net.mineacle.core.teams.gui.TeamStartGui;
 import net.mineacle.core.teams.gui.TeamsMainGui;
 import net.mineacle.core.teams.model.TeamInviteRecord;
 import net.mineacle.core.teams.model.TeamRecord;
@@ -57,12 +58,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player player)) {
-            sender.sendMessage("Players only.");
+            sender.sendMessage("Players only");
             return true;
         }
 
         if (!player.hasPermission("mineacleteams.use")) {
-            sendBoth(player, "§cYou do not have permission.");
+            sendBoth(player, "§cYou do not have permission");
             return true;
         }
 
@@ -70,7 +71,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             if (teamService.hasTeam(player.getUniqueId())) {
                 MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
             } else {
-                sendNoTeamPrompt(player);
+                MenuHistory.openRoot(core, player, () -> TeamStartGui.open(core, player, inviteService));
             }
 
             return true;
@@ -81,11 +82,11 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         if (!teamService.hasTeam(player.getUniqueId())
                 && !sub.equals("create")
                 && !sub.equals("join")
+                && !sub.equals("invites")
                 && !sub.equals("accept")
                 && !sub.equals("decline")
-                && !sub.equals("deny")
-                && !sub.equals("invites")) {
-            sendNoTeamPrompt(player);
+                && !sub.equals("deny")) {
+            MenuHistory.openRoot(core, player, () -> TeamStartGui.open(core, player, inviteService));
             return true;
         }
 
@@ -95,7 +96,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             }
 
             case "join", "invites" -> {
-                return join(player);
+                return invites(player);
             }
 
             case "accept" -> {
@@ -138,6 +139,10 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 return confirmTargetAction(player, args, "DEMOTE", "Demote Player", "§cUsage: /team demote <player>");
             }
 
+            case "transfer" -> {
+                return confirmTargetAction(player, args, "TRANSFER", "Transfer Founder", "§cUsage: /team transfer <player>");
+            }
+
             case "home" -> {
                 return home(player);
             }
@@ -155,7 +160,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             }
 
             default -> {
-                sendBoth(player, "§cUnknown team command.");
+                sendBoth(player, "§cUnknown team command");
                 return true;
             }
         }
@@ -163,34 +168,33 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private boolean create(Player player, String[] args) {
         if (teamService.hasTeam(player.getUniqueId())) {
-            sendBoth(player, "§cYou are already in a team.");
+            sendBoth(player, "§cYou are already in a team");
             return true;
         }
 
         if (args.length < 2) {
-            sendBoth(player, "§cUsage: /team create <name>");
+            Component prompt = Component.text(TextColor.color("§7Type §d/team create <name> §7to create a team"))
+                    .clickEvent(ClickEvent.suggestCommand("/team create "));
+
+            player.sendMessage(prompt);
+            player.sendActionBar(actionBar("§7Type §d/team create <name> §7to create a team"));
             return true;
         }
 
         String name = args[1];
 
         if (!teamService.createTeam(player.getUniqueId(), name)) {
-            sendBoth(player, "§cCould not create that team. Use 3-16 letters, numbers, or underscores.");
+            sendBoth(player, "§cCould not create that team Use 3-16 letters, numbers, or underscores");
             return true;
         }
 
-        sendBoth(player, "§aTeam created.");
+        sendBoth(player, "§aTeam created");
         MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
         return true;
     }
 
-    private boolean join(Player player) {
-        if (!inviteService.hasInvite(player.getUniqueId())) {
-            sendBoth(player, "§cYou have no current team invites.");
-            return true;
-        }
-
-        TeamInviteGui.open(core, player, inviteService, teamService);
+    private boolean invites(Player player) {
+        MenuHistory.openRoot(core, player, () -> TeamInviteGui.open(core, player, inviteService, teamService));
         return true;
     }
 
@@ -198,27 +202,27 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamInviteRecord invite = inviteService.getInvite(player.getUniqueId());
 
         if (invite == null) {
-            sendBoth(player, "§cYou have no current team invites.");
+            sendBoth(player, "§cYou have no current team invites");
             return true;
         }
 
         if (!inviteService.acceptInvite(player.getUniqueId())) {
-            sendBoth(player, "§cCould not accept invite.");
+            sendBoth(player, "§cCould not accept invite");
             return true;
         }
 
-        sendBoth(player, "§aInvite accepted.");
+        sendBoth(player, "§aInvite accepted");
         MenuHistory.openRoot(core, player, () -> TeamsMainGui.open(core, player, teamService, inviteService));
         return true;
     }
 
     private boolean decline(Player player) {
         if (!inviteService.denyInvite(player.getUniqueId())) {
-            sendBoth(player, "§cYou have no current team invites.");
+            sendBoth(player, "§cYou have no current team invites");
             return true;
         }
 
-        sendBoth(player, "§cInvite declined.");
+        sendBoth(player, "§cInvite declined");
         return true;
     }
 
@@ -226,12 +230,12 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            sendBoth(player, "§cOnly admins can invite players.");
+            sendBoth(player, "§cOnly admins can invite players");
             return true;
         }
 
@@ -241,53 +245,65 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         }
 
         if (teamService.getTeamMembers(team.teamId()).size() >= teamService.maxMembers()) {
-            sendBoth(player, "§cYour team is full.");
+            sendBoth(player, "§cYour team is full");
             return true;
         }
 
         Player target = Bukkit.getPlayerExact(args[1]);
 
         if (target == null) {
-            sendBoth(player, "§cThat player is not online.");
+            sendBoth(player, "§cThat player is offline");
             return true;
         }
 
         if (teamService.hasTeam(target.getUniqueId())) {
-            sendBoth(player, "§cThat player is already in a team.");
+            sendBoth(player, "§cThat player is already in a team");
             return true;
         }
 
         if (teamService.isBanned(team.teamId(), target.getUniqueId())) {
-            sendBoth(player, "§cThat player is banned from joining this team.");
+            sendBoth(player, "§cThat player is banned from joining this team");
             return true;
         }
 
         if (!inviteService.createInvite(team.teamId(), player.getUniqueId(), target.getUniqueId())) {
-            sendBoth(player, "§cCould not send invite.");
+            sendBoth(player, "§cCould not send invite");
             return true;
         }
 
         String senderName = DisplayNames.prefixedDisplayName(player);
         String targetName = DisplayNames.prefixedDisplayName(target);
 
-        sendBoth(player, "§aInvite sent to " + TextColor.color(targetName) + "§a.");
+        sendBoth(player, "§aInvite sent to " + TextColor.color(targetName));
+
+        Component accept = Component.text(TextColor.color("&d[Accept]"))
+                .clickEvent(ClickEvent.runCommand("/team accept"));
+
+        Component deny = Component.text(TextColor.color("&d[Deny]"))
+                .clickEvent(ClickEvent.runCommand("/team deny"));
+
+        Component view = Component.text(TextColor.color("&d[View]"))
+                .clickEvent(ClickEvent.runCommand("/team invites"));
+
+        Component inviteMessage = Component.text(TextColor.color("§7You received a team invite to &d" + team.name() + " §7"))
+                .append(accept)
+                .append(Component.text(" "))
+                .append(deny)
+                .append(Component.text(" "))
+                .append(view);
 
         target.sendActionBar(actionBar("§dTeam invite from " + TextColor.color(senderName)));
-        target.sendMessage(TextColor.color("§7You were invited to join &d" + team.name() + "§7."));
-        target.sendMessage(Component.text(TextColor.color("&a[View Invite]"))
-                .clickEvent(ClickEvent.runCommand("/team join")));
-
+        target.sendMessage(inviteMessage);
         return true;
     }
 
     private boolean teamChat(Player player) {
         if (!teamService.hasTeam(player.getUniqueId())) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         boolean enabled = teamService.toggleTeamChat(player.getUniqueId());
-
         String message = enabled ? "§7Team chat enabled" : "§7Team chat disabled";
 
         sendBoth(player, message);
@@ -296,7 +312,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private boolean leave(Player player) {
         if (teamService.isFounder(player.getUniqueId())) {
-            sendBoth(player, "§cYou cannot leave as founder. Use /team disband.");
+            sendBoth(player, "§cYou cannot leave as founder Use /team disband");
             return true;
         }
 
@@ -309,7 +325,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
 
     private boolean disband(Player player) {
         if (!teamService.isFounder(player.getUniqueId())) {
-            sendBoth(player, "§cOnly the founder can disband the team.");
+            sendBoth(player, "§cOnly the founder can disband the team");
             return true;
         }
 
@@ -329,7 +345,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         Player target = Bukkit.getPlayerExact(args[1]);
 
         if (target == null) {
-            sendBoth(player, "§cThat player must be online.");
+            sendBoth(player, "§cThat player must be online");
             return true;
         }
 
@@ -337,7 +353,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord targetTeam = teamService.getTeamByPlayer(target.getUniqueId());
 
         if (playerTeam == null || targetTeam == null || !playerTeam.teamId().equals(targetTeam.teamId())) {
-            sendBoth(player, "§cThat player is not in your team.");
+            sendBoth(player, "§cThat player is not in your team");
             return true;
         }
 
@@ -353,20 +369,20 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         org.bukkit.Location home = teamHomeService.getTeamHome(team.teamId());
 
         if (home == null) {
-            sendBoth(player, "§cYour team does not have a home set.");
+            sendBoth(player, "§cYour team does not have a home set");
             return true;
         }
 
         teleportService.begin(player, "Team Home", () -> {
             player.teleport(home);
-            sendBoth(player, "§aTeleported to Team Home.");
+            sendBoth(player, "§7Teleported to §dTeam Home");
         });
 
         return true;
@@ -376,17 +392,17 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            sendBoth(player, "§cOnly admins can set team home.");
+            sendBoth(player, "§cOnly admins can set team home");
             return true;
         }
 
         teamHomeService.setTeamHome(team.teamId(), player.getLocation());
-        sendBoth(player, "§aTeam home set.");
+        sendBoth(player, "§7Team Home set to your current location");
         return true;
     }
 
@@ -394,17 +410,17 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            sendBoth(player, "§cOnly admins can delete team home.");
+            sendBoth(player, "§cOnly admins can delete team home");
             return true;
         }
 
         if (teamHomeService.getTeamHome(team.teamId()) == null) {
-            sendBoth(player, "§cYour team does not have a home set.");
+            sendBoth(player, "§cYour team does not have a home set");
             return true;
         }
 
@@ -419,32 +435,22 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
         TeamRecord team = teamService.getTeamByPlayer(player.getUniqueId());
 
         if (team == null) {
-            sendBoth(player, "§cYou are not in a team.");
+            sendBoth(player, "§cYou are not in a team");
             return true;
         }
 
         if (!teamService.isAdmin(player.getUniqueId())) {
-            sendBoth(player, "§cOnly admins can toggle Team PvP.");
+            sendBoth(player, "§cOnly admins can toggle Team PvP");
             return true;
         }
 
         boolean enabled = !team.friendlyFire();
         teamService.setFriendlyFire(team.teamId(), enabled);
 
-        String message = enabled ? "§aTeam PvP enabled." : "§cTeam PvP disabled.";
+        String message = enabled ? "§aTeam PvP enabled" : "§cTeam PvP disabled";
 
         sendBoth(player, message);
         return true;
-    }
-
-    private void sendNoTeamPrompt(Player player) {
-        sendBoth(player, "§cYou are not in a team.");
-
-        player.sendMessage(Component.text(TextColor.color("§7Type &d/team create <name> §7to create a team."))
-                .clickEvent(ClickEvent.suggestCommand("/team create ")));
-
-        player.sendMessage(Component.text(TextColor.color("§7Type &d/team join §7to view invites."))
-                .clickEvent(ClickEvent.runCommand("/team join")));
     }
 
     private void clearConfirmMeta(Player player) {
@@ -465,7 +471,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
             List<String> options;
 
             if (!teamService.hasTeam(player.getUniqueId())) {
-                options = List.of("create", "join");
+                options = List.of("create", "join", "invites", "accept", "deny");
             } else if (teamService.isAdmin(player.getUniqueId())) {
                 options = List.of(
                         "invite",
@@ -478,6 +484,7 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                         "demote",
                         "kick",
                         "ban",
+                        "transfer",
                         "leave",
                         "disband"
                 );
@@ -501,7 +508,8 @@ public final class TeamCommand implements CommandExecutor, TabCompleter {
                 || args[0].equalsIgnoreCase("promote")
                 || args[0].equalsIgnoreCase("demote")
                 || args[0].equalsIgnoreCase("kick")
-                || args[0].equalsIgnoreCase("ban"))) {
+                || args[0].equalsIgnoreCase("ban")
+                || args[0].equalsIgnoreCase("transfer"))) {
             String partial = args[1].toLowerCase(Locale.ROOT);
 
             for (Player online : Bukkit.getOnlinePlayers()) {
