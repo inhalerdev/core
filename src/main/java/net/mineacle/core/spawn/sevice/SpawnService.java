@@ -59,6 +59,10 @@ public final class SpawnService {
         }
     }
 
+    public Core core() {
+        return core;
+    }
+
     public boolean enabled() {
         return spawnConfig.getBoolean("enabled", true);
     }
@@ -79,6 +83,18 @@ public final class SpawnService {
         }
 
         return ((size + 8) / 9) * 9;
+    }
+
+    public int teleportDelaySeconds() {
+        return Math.max(0, spawnConfig.getInt("teleport.delay-seconds", 5));
+    }
+
+    public boolean cancelOnMove() {
+        return spawnConfig.getBoolean("teleport.cancel-on-move", true);
+    }
+
+    public double cancelMoveDistance() {
+        return Math.max(0.01D, spawnConfig.getDouble("teleport.cancel-distance", 0.15D));
     }
 
     public int maxPlayersDisplay() {
@@ -152,6 +168,24 @@ public final class SpawnService {
 
     public boolean isCurrentWorld(Player player, SpawnPoint point) {
         return player.getWorld().getName().equalsIgnoreCase(point.worldName());
+    }
+
+    public boolean isSpawnWorld(String worldName) {
+        if (worldName == null) {
+            return false;
+        }
+
+        for (SpawnPoint point : spawnPoints()) {
+            if (!point.enabled()) {
+                continue;
+            }
+
+            if (point.worldName().equalsIgnoreCase(worldName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public int onlineInWorld(SpawnPoint point) {
@@ -348,6 +382,18 @@ public final class SpawnService {
         }
 
         return false;
+    }
+
+    public boolean loginRerouteEnabled() {
+        return spawnConfig.getBoolean("login-reroute.enabled", true);
+    }
+
+    public long loginRerouteDelayTicks() {
+        return Math.max(1L, spawnConfig.getLong("login-reroute.delay-ticks", 5L));
+    }
+
+    public boolean loginRerouteSendMessage() {
+        return spawnConfig.getBoolean("login-reroute.send-message", true);
     }
 
     private boolean isValidId(String id) {

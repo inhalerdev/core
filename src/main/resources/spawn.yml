@@ -3,6 +3,16 @@ title: "Spawn"
 size: 27
 max-players-display: 100
 
+teleport:
+  delay-seconds: 5
+  cancel-on-move: true
+  cancel-distance: 0.15
+
+login-reroute:
+  enabled: true
+  delay-ticks: 5
+  send-message: true
+
 worlds:
   lobby1:
     enabled: true
@@ -52,8 +62,13 @@ void:
 
 messages:
   already-here: "&7You are already at &d%spawn%"
+  teleport-start: "&7Teleporting to &d%spawn% &7in &d%seconds%s"
+  teleport-countdown: "&7Teleporting to &d%spawn% &7in &d%seconds%s"
+  teleport-cancelled: "&cTeleport cancelled because you moved"
   teleported: "&7Teleported to &d%spawn%"
   world-missing: "&cThat spawn world is not loaded"
   random-missing: "&cNo spawn worlds are available"
   void-teleported: "&7Saved from the void and sent to &d%spawn%"
   void-missing: "&cNo safe spawn is available"
+  login-rerouted: "&7Sent to &d%spawn%"
+  login-reroute-missing: "&cNo spawn worlds are available"
